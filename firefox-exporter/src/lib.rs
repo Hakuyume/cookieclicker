@@ -88,7 +88,10 @@ impl FirefoxExporter {
         Ok(String::from_utf8(value)?)
     }
 
-    pub fn watch(&mut self, interval: Duration) -> impl Stream<Item = Result<String, Error>> + '_ {
+    pub fn watch(
+        &mut self,
+        interval: Duration,
+    ) -> impl Stream<Item = Result<String, Error>> + Send + '_ {
         let span = tracing::info_span!("watch", interval = ?interval);
         futures::stream::try_unfold(
             (self, tokio::time::interval(interval)),
