@@ -1,0 +1,25 @@
+[package]
+name = "firefox-exporter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dirs.workspace = true
+futures.workspace = true
+rust-ini.workspace = true
+snap.workspace = true
+sqlx = { workspace = true, features = ["sqlite"] }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["fs", "time"] }
+tracing.workspace = true
+tracing-futures.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+humantime.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing-subscriber.workspace = true
