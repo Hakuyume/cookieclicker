@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[decode(pat = '|')]
 pub struct Save {
     pub game_version: GameVersion,
-    _empty: (),
+    #[decode(skip = 1)]
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,

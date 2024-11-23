@@ -1,5 +1,5 @@
-use crate::error::Error;
 use super::Decode;
+use crate::error::Error;
 
 impl<T> Decode<T> for ()
 where

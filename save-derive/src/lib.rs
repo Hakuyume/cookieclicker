@@ -84,10 +84,32 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                 quote::quote!(value.chars())
             };
             let field_values = fields.named.iter().map(|field| {
+                let mut skip = None;
+                for attr in &field.attrs {
+                    if attr.path().is_ident("decode") {
+                        if let Err(e) = attr.parse_nested_meta(|meta| {
+                            if meta.path.is_ident("skip") {
+                                skip = Some(meta.value()?.parse::<syn::LitInt>()?);
+                                Ok(())
+                            } else {
+                                Err(meta.error("unimplemented"))
+                            }
+                        }) {
+                            return e.into_compile_error();
+                        }
+                    }
+                }
+
                 let ident = field.ident.as_ref().unwrap();
+                let segments = if let Some(skip) = &skip {
+                    quote::quote!(segments.by_ref().skip(#skip))
+                } else {
+                    quote::quote!(segments)
+                };
+
                 quote::quote!(
                     #ident: crate::decode::Decode::decode(
-                        segments.next().ok_or(crate::error::Error::InsufficientData)?
+                        #segments.next().ok_or(crate::error::Error::InsufficientData)?
                     )?
                 )
             });
