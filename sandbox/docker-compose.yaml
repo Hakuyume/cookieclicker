@@ -25,6 +25,7 @@ services:
      - /usr/bin/vncserver
      - --I-KNOW-THIS-IS-INSECURE
      - -fg
+     - -geometry=1440x2560
      - -localhost=no
      - -SecurityTypes=None
      - :1
