@@ -50,6 +50,11 @@ async fn main() -> anyhow::Result<()> {
                             "cookies_in_bank",
                             save.miscellaneous_game_data.cookies_in_bank,
                         )
+                        .field("cookies_baked", save.miscellaneous_game_data.cookies_baked)
+                        .field(
+                            "cookies_forfeited_by_ascending",
+                            save.miscellaneous_game_data.cookies_forfeited_by_ascending,
+                        )
                         .timestamp(
                             timestamp
                                 .timestamp_nanos_opt()
