@@ -2,10 +2,6 @@ use proc_macro::TokenStream;
 use quote::ToTokens;
 use std::iter;
 
-fn unimplemented() -> TokenStream {
-    quote::quote!(::core::compile_error!("unimplemented")).into()
-}
-
 #[proc_macro_derive(Decode, attributes(decode))]
 pub fn derive_decode(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
@@ -127,6 +123,6 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
             )
             .into()
         }
-        _ => unimplemented(),
+        _ => quote::quote!(::core::compile_error!("unimplemented")).into(),
     }
 }

@@ -120,5 +120,11 @@ pub struct Garden {
     pub harvests_this_ascension: u64,
     pub total_harvests: u64,
     pub unlocked_seeds: Vec<bool>,
-    pub farm_grid_data: Vec<Option<(usize, u8)>>,
+    pub farm_grid_data: Vec<Option<FarmGridData>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct FarmGridData {
+    pub id: usize,
+    pub age: u8,
 }

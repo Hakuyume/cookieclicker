@@ -63,7 +63,7 @@ impl Decode<&str> for super::Garden {
                     if id == 0 {
                         Ok(None)
                     } else {
-                        Ok(Some((id, age)))
+                        Ok(Some(super::FarmGridData { id, age }))
                     }
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
