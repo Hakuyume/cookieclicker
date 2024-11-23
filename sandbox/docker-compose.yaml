@@ -12,6 +12,7 @@ services:
      - 2828:2828
      volumes:
      - tmp:/tmp
+     - firefox:/home/user/.mozilla/firefox
 
      depends_on:
        vncserver:
@@ -49,3 +50,4 @@ services:
 volumes:
   tmp:
     driver: tmpfs
+  firefox:
