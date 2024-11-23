@@ -242,7 +242,7 @@ impl Decode<&str> for super::Garden {
             harvests_this_ascension: segments_a.next_decode()?,
             total_harvests: segments_a.next_decode()?,
             unlocked_seeds: segments_b
-                .map(|value| Decode::decode(value))
+                .map(Decode::decode)
                 .collect::<Result<Vec<_>, _>>()?,
             farm_grid_data: segments_c
                 .tuples()
