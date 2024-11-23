@@ -1,5 +1,5 @@
 [workspace]
-members = ["firefox-exporter", "save", "save-derive"]
+members = ["dump-influxdb", "firefox-exporter", "save", "save-derive"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -10,6 +10,7 @@ clap = { version = "4.5.20", features = ["derive"] }
 dirs = "5.0.1"
 futures = "0.3.31"
 humantime = "2.1.0"
+influxdb-line-protocol = "2.0.0"
 itertools = "0.13.0"
 quote = "1.0.37"
 rust-ini = "0.21.1"

@@ -1,0 +1,14 @@
+[package]
+name = "dump-influxdb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+influxdb-line-protocol.workspace = true
+save.path = "../save"
+sqlx = { workspace = true, features = ["chrono", "sqlite"] }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread"] }
+tracing-subscriber.workspace = true
