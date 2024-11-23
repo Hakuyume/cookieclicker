@@ -30,30 +30,6 @@ impl Decode<&str> for bool {
     }
 }
 
-impl Decode<&str> for u8 {
-    fn decode(value: &str) -> Result<Self, Error> {
-        Ok(value.parse()?)
-    }
-}
-
-impl Decode<&str> for u64 {
-    fn decode(value: &str) -> Result<Self, Error> {
-        Ok(value.parse()?)
-    }
-}
-
-impl Decode<&str> for usize {
-    fn decode(value: &str) -> Result<Self, Error> {
-        Ok(value.parse()?)
-    }
-}
-
-impl Decode<&str> for f64 {
-    fn decode(value: &str) -> Result<Self, Error> {
-        Ok(value.parse()?)
-    }
-}
-
 impl<'a> Decode<&'a str> for &'a str {
     fn decode(value: &'a str) -> Result<Self, Error> {
         Ok(value)
@@ -65,3 +41,17 @@ impl Decode<&str> for String {
         Ok(value.to_owned())
     }
 }
+
+macro_rules! from_str {
+    ($ty:ty) => {
+        impl Decode<&str> for $ty {
+            fn decode(value: &str) -> Result<Self, Error> {
+                Ok(value.parse()?)
+            }
+        }
+    };
+}
+from_str!(u8);
+from_str!(u64);
+from_str!(usize);
+from_str!(f64);
