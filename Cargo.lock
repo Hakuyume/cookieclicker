@@ -1393,6 +1393,7 @@ dependencies = [
  "itertools",
  "save-derive",
  "serde",
+ "serde_json",
  "thiserror 2.0.3",
  "tracing",
  "tracing-subscriber",
