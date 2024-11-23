@@ -71,7 +71,7 @@ pub struct MiscellaneousGameData {
     pub elder_pledges_made: u64,
     pub time_left_in_elder_pledge: u64,
     pub currently_researching: usize,
-    pub time_left_in_research: u64,
+    pub time_left_in_research: Option<u64>,
     pub ascensions: u64,
 }
 
