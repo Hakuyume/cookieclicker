@@ -17,6 +17,7 @@ pub struct Save {
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
     pub building_data: BuildingData,
+    pub upgrades: Vec<Upgrade>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
@@ -127,4 +128,10 @@ pub struct Garden {
 pub struct FarmGridData {
     pub id: usize,
     pub age: u8,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Upgrade {
+    pub unlocked: bool,
+    pub bought: bool,
 }

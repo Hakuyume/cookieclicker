@@ -70,3 +70,17 @@ impl Decode<&str> for super::Garden {
         })
     }
 }
+
+impl Decode<&str> for Vec<super::Upgrade> {
+    fn decode(value: &str) -> Result<Self, Error> {
+        value
+            .chars()
+            .tuples()
+            .map(|(unlocked, bought)| {
+                let unlocked = Decode::decode(unlocked)?;
+                let bought = Decode::decode(bought)?;
+                Ok(super::Upgrade { unlocked, bought })
+            })
+            .collect()
+    }
+}
