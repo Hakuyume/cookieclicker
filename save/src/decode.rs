@@ -135,6 +135,21 @@ impl Decode<&str> for super::RunDetails {
     }
 }
 
+impl Decode<&str> for super::YouAppearance {
+    fn decode(value: &str) -> Result<Self, Error> {
+        let mut segments = value.split(',');
+        Ok(Self {
+            hair: segments.next_decode()?,
+            hair_color: segments.next_decode()?,
+            skin_color: segments.next_decode()?,
+            head_shape: segments.next_decode()?,
+            face: segments.next_decode()?,
+            extra_a: segments.next_decode()?,
+            extra_b: segments.next_decode()?,
+        })
+    }
+}
+
 impl Decode<&str> for super::Preferences {
     fn decode(value: &str) -> Result<Self, Error> {
         let mut segments = value.chars();

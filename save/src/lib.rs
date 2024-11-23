@@ -43,7 +43,18 @@ pub struct RunDetails {
     pub last_opened: u64,
     pub bakery_name: String,
     pub seed: String,
-    pub you_appearance: String,
+    pub you_appearance: YouAppearance,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct YouAppearance {
+    pub hair: usize,
+    pub hair_color: usize,
+    pub skin_color: usize,
+    pub head_shape: usize,
+    pub face: usize,
+    pub extra_a: usize,
+    pub extra_b: usize,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
