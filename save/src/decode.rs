@@ -5,13 +5,12 @@ use base64::prelude::{Engine, BASE64_STANDARD};
 use itertools::Itertools;
 pub(crate) use save_derive::Decode;
 
-#[tracing::instrument(err, ret)]
+#[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
 pub fn decode(value: &str) -> Result<super::Save, Error> {
     let value = urlencoding::decode(value)?;
     let value = value.trim_end_matches("!END!");
     let value = BASE64_STANDARD.decode(value)?;
     let value = String::from_utf8(value)?;
-    tracing::info!(value);
     super::Save::decode(&value)
 }
 
@@ -20,8 +19,9 @@ pub(crate) trait Decode<V>: Sized {
 }
 
 impl Decode<&str> for super::Garden {
+    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
     fn decode(value: &str) -> Result<Self, Error> {
-        #[derive(Decode)]
+        #[derive(Debug, Decode)]
         #[decode(pat = ' ')]
         struct Segments<'a> {
             a: A,
@@ -29,7 +29,7 @@ impl Decode<&str> for super::Garden {
             c: &'a str,
         }
 
-        #[derive(Decode)]
+        #[derive(Debug, Decode)]
         #[decode(pat = ':')]
         struct A {
             time_of_next_tick: u64,
@@ -72,6 +72,7 @@ impl Decode<&str> for super::Garden {
 }
 
 impl Decode<&str> for Vec<super::Upgrade> {
+    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
     fn decode(value: &str) -> Result<Self, Error> {
         value
             .chars()

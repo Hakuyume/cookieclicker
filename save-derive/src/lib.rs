@@ -61,9 +61,9 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                 .map(|field| {
                     let ty = &field.ty;
                     if pat.is_some() {
-                        quote::quote!(#ty: crate::decode::Decode<&'decode str>)
+                        quote::quote!(#ty: __Decode<&'decode str>)
                     } else {
-                        quote::quote!(#ty: crate::decode::Decode<char>)
+                        quote::quote!(#ty: __Decode<char>)
                     }
                 })
                 .chain(
@@ -104,22 +104,32 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                 };
 
                 quote::quote!(
-                    #ident: crate::decode::Decode::decode(
-                        #segments.next().ok_or(crate::error::Error::InsufficientData)?
-                    )?
+                    #ident: {
+                        let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
+                        __Decode::decode(#segments.next().ok_or(__Error::InsufficientData)?)?
+                    }
                 )
             });
 
             quote::quote!(
-                impl<#(#generics,)*> crate::decode::Decode<&'decode str> for #self_ty
-                where
-                #(#where_predicates,)*
-                {
-                    fn decode(value: &'decode str) -> Result<Self, crate::error::Error> {
-                        let mut segments = #segments;
-                        Ok(Self { #(#field_values,)* })
+                const _: () = {
+                    use crate::decode::Decode as __Decode;
+                    use crate::error::Error as __Error;
+                    use ::std as __std;
+                    use ::tracing as __tracing;
+
+                    impl<#(#generics,)*> __Decode<&'decode str> for #self_ty
+                    where
+                    Self: __std::fmt::Debug,
+                    #(#where_predicates,)*
+                    {
+                        #[__tracing::instrument(err, ret(level = __tracing::Level::DEBUG))]
+                        fn decode(value: &'decode str) -> Result<Self, __Error> {
+                            let mut segments = #segments;
+                            Ok(Self { #(#field_values,)* })
+                        }
                     }
-                }
+                };
             )
             .into()
         }

@@ -67,7 +67,7 @@ impl FirefoxExporter {
         })
     }
 
-    #[tracing::instrument(err, ret, skip_all)]
+    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip_all)]
     pub async fn export(&mut self) -> Result<String, Error> {
         let pool = sqlx::SqlitePool::connect_with(
             sqlx::sqlite::SqliteConnectOptions::new()
