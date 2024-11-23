@@ -1,5 +1,5 @@
 [workspace]
-members = ["firefox-exporter", "save"]
+members = ["firefox-exporter", "save", "save-derive"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -11,11 +11,13 @@ dirs = "5.0.1"
 futures = "0.3.31"
 humantime = "2.1.0"
 itertools = "0.13.0"
+quote = "1.0.37"
 rust-ini = "0.21.1"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0.132"
 snap = "1.1.1"
 sqlx = { version = "0.8.2", features = ["runtime-tokio"] }
+syn = "2.0.89"
 thiserror = "2.0.3"
 tokio = "1.41.1"
 tracing = "0.1.40"

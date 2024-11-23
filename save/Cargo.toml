@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 base64.workspace = true
 itertools.workspace = true
+save-derive.path = "../save-derive"
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

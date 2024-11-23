@@ -1,42 +1,32 @@
 // https://cookieclicker.fandom.com/wiki/Save
 
 mod decode;
+mod error;
 
 pub use decode::decode;
+pub use error::Error;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Base64(#[from] base64::DecodeError),
-    #[error(transparent)]
-    Float(#[from] std::num::ParseFloatError),
-    #[error(transparent)]
-    Int(#[from] std::num::ParseIntError),
-    #[error(transparent)]
-    Utf8(#[from] std::string::FromUtf8Error),
-
-    #[error("cannot parse bool")]
-    Bool,
-    #[error("insufficient data")]
-    InsufficientData,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[allow(clippy::manual_non_exhaustive)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = '|')]
 pub struct Save {
     pub game_version: GameVersion,
+    _empty: (),
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
     pub building_data: BuildingData,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ';')]
 pub struct GameVersion {
     pub game_version: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ';')]
 pub struct RunDetails {
     pub ascension_start: u64,
     pub legacy_start: u64,
@@ -46,7 +36,8 @@ pub struct RunDetails {
     pub you_appearance: YouAppearance,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ',')]
 pub struct YouAppearance {
     pub hair: usize,
     pub hair_color: usize,
@@ -57,12 +48,14 @@ pub struct YouAppearance {
     pub extra_b: usize,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[non_exhaustive]
 pub struct Preferences {
     pub particles: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ';')]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
     pub cookies_baked: f64,
@@ -81,7 +74,8 @@ pub struct MiscellaneousGameData {
     pub ascensions: u64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ';')]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
     pub grandmas: BuildingDataEntry,
@@ -105,7 +99,8 @@ pub struct BuildingData {
     pub yous: BuildingDataEntry,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
+#[decode(pat = ',')]
 pub struct BuildingDataEntry<M = ()> {
     pub amount_owned: u64,
     pub amount_bought: u64,
