@@ -103,7 +103,7 @@ where
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
     pub async fn big_cookie(&mut self) -> Result<(), T::Error> {
         self.clear().await?;
-        self.click_ensure(BIG_COOKIE).await?;
+        self.click_maybe(BIG_COOKIE).await?;
         Ok(())
     }
 
