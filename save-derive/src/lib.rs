@@ -56,6 +56,7 @@ impl Generator<'_> {
             value,
             ..
         } = self;
+        let ident = &self.input.ident;
 
         let generics = self.genrics();
         let self_ty = self.self_ty();
@@ -73,15 +74,15 @@ impl Generator<'_> {
                 use ::std as #std;
                 use ::tracing as #tracing;
 
-                impl<#(#generics,)*> #decode::Decode<&#lifetime str> for #self_ty
+                impl<#(#generics,)*> #decode::Decoder<&#lifetime str, #self_ty> for #decode::Standard
                 where
-                Self: #std::fmt::Debug,
+                #self_ty: #std::fmt::Debug,
                 #(#where_predicates,)*
                 {
                     #[#tracing::instrument(err, ret(level = #tracing::Level::DEBUG))]
-                    fn decode(#value: &#lifetime str) -> Result<Self, #error::Error> {
+                    fn decode(#value: &#lifetime str) -> Result<#self_ty, #error::Error> {
                         let mut #segments = #segments_expr;
-                        Ok(Self { #(#field_values,)* })
+                        Ok(#ident { #(#field_values,)* })
                     }
                 }
             };
@@ -144,13 +145,10 @@ impl Generator<'_> {
         self.fields()
             .map(move |field| {
                 let field = field?;
-                let ty = field.ty;
+                let FieldNamed { ty, with, .. } = &field;
+
                 let segment_ty = self.segment_ty()?;
-                if let Some(with) = &field.with {
-                    Ok(syn::parse_quote!(#with: #decode::Decoder<#segment_ty, #ty>))
-                } else {
-                    Ok(syn::parse_quote!(#ty: #decode::Decode<#segment_ty>))
-                }
+                Ok(syn::parse_quote!(#with: #decode::Decoder<#segment_ty, #ty>))
             })
             .chain(
                 self.input
@@ -195,19 +193,21 @@ impl Generator<'_> {
 
         self.fields().map(move |field| {
             let field = field?;
-            let ident = field.ident;
-            let ty = field.ty;
-            let segments: syn::Expr = if let Some(skip) = &field.skip {
+            let FieldNamed {
+                ident,
+                ty,
+                skip,
+                with,
+            } = &field;
+
+            let segments: syn::Expr = if let Some(skip) = skip {
                 syn::parse_quote!(#segments.by_ref().skip(#skip))
             } else {
                 syn::parse_quote!(#segments)
             };
             let segment_ty = self.segment_ty()?;
-            let decode: syn::TypePath = if let Some(with) = &field.with {
-                syn::parse_quote!(<#with as #decode::Decoder<#segment_ty, #ty>>::decode)
-            } else {
-                syn::parse_quote!(<#ty as #decode::Decode<#segment_ty>>::decode)
-            };
+            let decode: syn::TypePath =
+                syn::parse_quote!(<#with as #decode::Decoder<#segment_ty, #ty>>::decode);
             Ok(syn::parse_quote!(
                 #ident: {
                     let _span = #tracing::info_span!(#std::stringify!(#ident)).entered();
@@ -244,11 +244,13 @@ struct FieldNamed<'a> {
     ident: &'a syn::Ident,
     ty: &'a syn::Type,
     skip: Option<syn::LitInt>,
-    with: Option<syn::Type>,
+    with: syn::Type,
 }
 impl Generator<'_> {
     fn fields(&self) -> impl Iterator<Item = syn::Result<FieldNamed<'_>>> + '_ {
-        self.fields.named.iter().map(|field| {
+        let Self { decode, .. } = self;
+
+        self.fields.named.iter().map(move |field| {
             field.attrs.iter().try_fold(
                 FieldNamed {
                     ident: field
@@ -257,7 +259,7 @@ impl Generator<'_> {
                         .ok_or_else(|| syn::Error::new(field.span(), "missing ident"))?,
                     ty: &field.ty,
                     skip: None,
-                    with: None,
+                    with: syn::parse_quote!(#decode::Standard),
                 },
                 |mut this, attr| {
                     if attr.path().is_ident("decode") {
@@ -266,7 +268,7 @@ impl Generator<'_> {
                                 this.skip = Some(meta.value()?.parse()?);
                                 Ok(())
                             } else if meta.path.is_ident("with") {
-                                this.with = Some(meta.value()?.parse()?);
+                                this.with = meta.value()?.parse()?;
                                 Ok(())
                             } else {
                                 Err(meta.error("unimplemented"))

@@ -1,19 +1,19 @@
-use super::Decode;
+use super::{Decoder, Standard};
 use crate::error::Error;
 
-impl<T> Decode<T> for ()
+impl<T> Decoder<T, ()> for Standard
 where
     T: Sized,
 {
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(_: T) -> Result<Self, Error> {
+    fn decode(_: T) -> Result<(), Error> {
         Ok(())
     }
 }
 
-impl Decode<char> for bool {
+impl Decoder<char, bool> for Standard {
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(value: char) -> Result<Self, Error> {
+    fn decode(value: char) -> Result<bool, Error> {
         match value {
             '0' => Ok(false),
             '1' => Ok(true),
@@ -22,9 +22,9 @@ impl Decode<char> for bool {
     }
 }
 
-impl Decode<&str> for bool {
+impl Decoder<&str, bool> for Standard {
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(value: &str) -> Result<Self, Error> {
+    fn decode(value: &str) -> Result<bool, Error> {
         match value {
             "0" => Ok(false),
             "1" => Ok(true),
@@ -33,25 +33,25 @@ impl Decode<&str> for bool {
     }
 }
 
-impl<'a> Decode<&'a str> for &'a str {
+impl<'a> Decoder<&'a str, &'a str> for Standard {
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(value: &'a str) -> Result<Self, Error> {
+    fn decode(value: &'a str) -> Result<&'a str, Error> {
         Ok(value)
     }
 }
 
-impl Decode<&str> for String {
+impl Decoder<&str, String> for Standard {
     #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(value: &str) -> Result<Self, Error> {
+    fn decode(value: &str) -> Result<String, Error> {
         Ok(value.to_owned())
     }
 }
 
 macro_rules! from_str {
     ($ty:ty) => {
-        impl Decode<&str> for $ty {
+        impl Decoder<&str, $ty> for Standard {
             #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-            fn decode(value: &str) -> Result<Self, Error> {
+            fn decode(value: &str) -> Result<$ty, Error> {
                 Ok(value.parse()?)
             }
         }
