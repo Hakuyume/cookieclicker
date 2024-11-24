@@ -61,15 +61,3 @@ from_str!(u8);
 from_str!(u64);
 from_str!(usize);
 from_str!(f64);
-
-impl Decode<&str> for Option<u64> {
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
-    fn decode(value: &str) -> Result<Self, Error> {
-        let value = value.parse::<i64>()?;
-        if value >= 0 {
-            Ok(Some(value as _))
-        } else {
-            Ok(None)
-        }
-    }
-}

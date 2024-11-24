@@ -71,6 +71,7 @@ pub struct MiscellaneousGameData {
     pub elder_pledges_made: u64,
     pub time_left_in_elder_pledge: u64,
     pub currently_researching: usize,
+    #[decode(with = decode::NoneAsNegative)]
     pub time_left_in_research: Option<u64>,
     pub ascensions: u64,
 }
@@ -107,7 +108,8 @@ pub struct BuildingDataEntry<M = ()> {
     pub amount_bought: u64,
     pub cookies_produced: f64,
     pub level: usize,
-    pub minigame_data: M,
+    #[decode(with = decode::NoneAsEmpty)]
+    pub minigame_data: Option<M>,
     pub muted: bool,
     pub highest_amount: u64,
 }

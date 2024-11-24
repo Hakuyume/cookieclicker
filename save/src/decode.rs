@@ -4,6 +4,7 @@ use crate::error::Error;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use itertools::Itertools;
 pub(crate) use save_derive::Decode;
+use std::fmt::Debug;
 
 #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
 pub fn decode(value: &str) -> Result<super::Save, Error> {
@@ -16,6 +17,38 @@ pub fn decode(value: &str) -> Result<super::Save, Error> {
 
 pub(crate) trait Decode<V>: Sized {
     fn decode(value: V) -> Result<Self, Error>;
+}
+
+pub(crate) trait Decoder<V, T> {
+    fn decode(value: V) -> Result<T, Error>;
+}
+
+pub(crate) struct NoneAsEmpty;
+impl<'a, T> Decoder<&'a str, Option<T>> for NoneAsEmpty
+where
+    T: Debug + Decode<&'a str>,
+{
+    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+    fn decode(value: &'a str) -> Result<Option<T>, Error> {
+        if value.is_empty() {
+            Ok(None)
+        } else {
+            T::decode(value).map(Some)
+        }
+    }
+}
+
+pub(crate) struct NoneAsNegative;
+impl Decoder<&str, Option<u64>> for NoneAsNegative {
+    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+    fn decode(value: &str) -> Result<Option<u64>, Error> {
+        let value = value.parse::<i64>()?;
+        if value >= 0 {
+            Ok(Some(value as _))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl Decode<&str> for super::Garden {

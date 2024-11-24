@@ -26,6 +26,31 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                 }
             }
 
+            let field_attrs = fields.named.iter().map(|field| {
+                let mut skip = None;
+                let mut with = None;
+                for attr in &field.attrs {
+                    if attr.path().is_ident("decode") {
+                        attr.parse_nested_meta(|meta| {
+                            if meta.path.is_ident("skip") {
+                                skip = Some(meta.value()?.parse::<syn::LitInt>()?);
+                                Ok(())
+                            } else if meta.path.is_ident("with") {
+                                with = Some(meta.value()?.parse::<syn::Type>()?);
+                                Ok(())
+                            } else {
+                                Err(meta.error("unimplemented"))
+                            }
+                        })?
+                    }
+                }
+                Ok((skip, with))
+            });
+            let field_attrs = match field_attrs.collect::<syn::Result<Vec<_>>>() {
+                Ok(v) => v,
+                Err(e) => return e.into_compile_error().into(),
+            };
+
             let self_ty = {
                 let ident = &input.ident;
                 let generic_params = input.generics.params.iter().map(|param| match param {
@@ -55,15 +80,21 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
                         }
                     }),
             );
+            let segment = if pat.is_some() {
+                quote::quote!(&'decode str)
+            } else {
+                quote::quote!(char)
+            };
             let where_predicates = fields
                 .named
                 .iter()
-                .map(|field| {
+                .zip(&field_attrs)
+                .map(|(field, (_, with))| {
                     let ty = &field.ty;
-                    if pat.is_some() {
-                        quote::quote!(#ty: __Decode<&'decode str>)
+                    if let Some(with) = with {
+                        quote::quote!(#with: __Decoder<#segment, #ty>)
                     } else {
-                        quote::quote!(#ty: __Decode<char>)
+                        quote::quote!(#ty: __Decode<#segment>)
                     }
                 })
                 .chain(
@@ -79,41 +110,34 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
             } else {
                 quote::quote!(value.chars())
             };
-            let field_values = fields.named.iter().map(|field| {
-                let mut skip = None;
-                for attr in &field.attrs {
-                    if attr.path().is_ident("decode") {
-                        if let Err(e) = attr.parse_nested_meta(|meta| {
-                            if meta.path.is_ident("skip") {
-                                skip = Some(meta.value()?.parse::<syn::LitInt>()?);
-                                Ok(())
-                            } else {
-                                Err(meta.error("unimplemented"))
-                            }
-                        }) {
-                            return e.into_compile_error();
+            let field_values = fields.named.iter().zip(&field_attrs).map(
+                |(field, (skip, with))| {
+                    let ident = field.ident.as_ref().unwrap();
+                    let ty = &field.ty;
+                    let segments = if let Some(skip) = skip {
+                        quote::quote!(segments.by_ref().skip(#skip))
+                    } else {
+                        quote::quote!(segments)
+                    };
+                    let decode = if let Some(with) = with {
+                        quote::quote!(<#with as __Decoder<#segment, #ty>>::decode)
+                    } else {
+                        quote::quote!(<#ty as __Decode<#segment>>::decode)
+                    };
+
+                    quote::quote!(
+                        #ident: {
+                            let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
+                            #decode(#segments.next().ok_or(__Error::InsufficientData)?)?
                         }
-                    }
-                }
-
-                let ident = field.ident.as_ref().unwrap();
-                let segments = if let Some(skip) = &skip {
-                    quote::quote!(segments.by_ref().skip(#skip))
-                } else {
-                    quote::quote!(segments)
-                };
-
-                quote::quote!(
-                    #ident: {
-                        let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
-                        __Decode::decode(#segments.next().ok_or(__Error::InsufficientData)?)?
-                    }
-                )
-            });
+                    )
+                },
+            );
 
             quote::quote!(
                 const _: () = {
                     use crate::decode::Decode as __Decode;
+                    use crate::decode::Decoder as __Decoder;
                     use crate::error::Error as __Error;
                     use ::std as __std;
                     use ::tracing as __tracing;
