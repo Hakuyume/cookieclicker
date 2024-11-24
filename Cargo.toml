@@ -1,5 +1,5 @@
 [workspace]
-members = ["dump-influxdb", "firefox-exporter", "save", "save-derive"]
+members = ["automation","dump-influxdb", "firefox-exporter", "save", "save-derive"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -8,6 +8,7 @@ base64 = "0.22.1"
 chrono = { version =  "0.4.38", features = ["serde"] }
 clap = { version = "4.5.20", features = ["derive"] }
 dirs = "5.0.1"
+fantoccini = { version = "0.21.2", features = ["rustls-tls"] }
 futures = "0.3.31"
 humantime = "2.1.0"
 influxdb-line-protocol = "2.0.0"

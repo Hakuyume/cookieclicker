@@ -1,0 +1,15 @@
+[package]
+name = "automation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fantoccini.workspace = true
+futures.workspace = true
+tokio = { workspace = true, features = ["time"] }
+tracing.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing-subscriber.workspace = true
