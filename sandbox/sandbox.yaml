@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cookieclicker
+spec:
+  selector:
+    matchLabels:
+      app: cookieclicker
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: cookieclicker
+    spec:
+      initContainers:
+        - name: vncserver
+          image: ghcr.io/hakuyume/cookieclicker:vncserver
+          command:
+            - vncserver
+            - -fg
+            - -geometry=1440x2560
+            - -SecurityTypes=None
+            - :1
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          restartPolicy: Always
+          startupProbe:
+            exec:
+              command: [test, -S, /tmp/.X11-unix/X1]
+
+      containers:
+        - name: firefox
+          image: ghcr.io/hakuyume/cookieclicker:firefox
+          command:
+            - firefox
+            - --display=:1
+            - --kiosk
+            - --marionette
+            - https://orteil.dashnet.org/cookieclicker/
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+        - name: geckodriver
+          image: ghcr.io/hakuyume/cookieclicker:geckodriver
+          command:
+            - geckodriver
+            - --connect-existing
+            - --host=0.0.0.0
+            - --marionette-port=2828
+        - name: novnc
+          image: ghcr.io/hakuyume/cookieclicker:novnc
+          command:
+            - /usr/bin/websockify
+            - --web=/usr/share/novnc
+            - "8080"
+            - localhost:5901
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cookieclicker
+spec:
+  selector:
+    app: cookieclicker
+  ports:
+    - name: webdriver
+      protocol: TCP
+      port: 4444
+    - name: novnc
+      protocol: TCP
+      port: 8080
