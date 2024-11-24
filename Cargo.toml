@@ -13,6 +13,7 @@ futures = "0.3.31"
 humantime = "2.1.0"
 influxdb-line-protocol = "2.0.0"
 itertools = "0.13.0"
+proc-macro2 = "1.0.92"
 quote = "1.0.37"
 rust-ini = "0.21.1"
 serde = { version = "1.0.214", features = ["derive"] }

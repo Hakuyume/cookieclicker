@@ -1,162 +1,292 @@
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use std::iter;
+use syn::spanned::Spanned;
 
 #[proc_macro_derive(Decode, attributes(decode))]
 pub fn derive_decode(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
-    match input.data {
+    match &input.data {
         syn::Data::Struct(syn::DataStruct {
             fields: syn::Fields::Named(fields),
             ..
-        }) => {
-            let mut pat = None;
-            for attr in &input.attrs {
-                if attr.path().is_ident("decode") {
-                    if let Err(e) = attr.parse_nested_meta(|meta| {
-                        if meta.path.is_ident("pat") {
-                            pat = Some(meta.value()?.parse::<syn::LitChar>()?);
-                            Ok(())
-                        } else {
-                            Err(meta.error("unimplemented"))
-                        }
-                    }) {
-                        return e.into_compile_error().into();
+        }) => Generator {
+            input: &input,
+            fields,
+
+            decode: syn::parse_quote!(__decode),
+            error: syn::parse_quote!(__error),
+            std: syn::parse_quote!(__std),
+            tracing: syn::parse_quote!(__tracing),
+
+            lifetime: syn::parse_quote!('__decode),
+            segments: syn::parse_quote!(segments),
+            value: syn::parse_quote!(value),
+        }
+        .generate()
+        .into_token_stream()
+        .into(),
+        _ => quote::quote!(::core::compile_error!("unimplemented")).into(),
+    }
+}
+
+struct Generator<'a> {
+    input: &'a syn::DeriveInput,
+    fields: &'a syn::FieldsNamed,
+
+    decode: syn::Ident,
+    error: syn::Ident,
+    std: syn::Ident,
+    tracing: syn::Ident,
+
+    lifetime: syn::Lifetime,
+    segments: syn::Ident,
+    value: syn::Ident,
+}
+
+impl Generator<'_> {
+    fn generate(&self) -> syn::Item {
+        let Self {
+            decode,
+            error,
+            std,
+            tracing,
+            lifetime,
+            segments,
+            value,
+            ..
+        } = self;
+
+        let generics = self.genrics();
+        let self_ty = self.self_ty();
+        let where_predicates = into_compile_error(self.where_predicates());
+        let segments_expr = self.segments_expr().map_or_else(
+            syn::Error::into_compile_error,
+            quote::ToTokens::into_token_stream,
+        );
+        let field_values = into_compile_error(self.field_values());
+
+        syn::parse_quote!(
+            const _: () = {
+                use crate::decode as #decode;
+                use crate::error as #error;
+                use ::std as #std;
+                use ::tracing as #tracing;
+
+                impl<#(#generics,)*> #decode::Decode<&#lifetime str> for #self_ty
+                where
+                Self: #std::fmt::Debug,
+                #(#where_predicates,)*
+                {
+                    #[#tracing::instrument(err, ret(level = #tracing::Level::DEBUG))]
+                    fn decode(#value: &#lifetime str) -> Result<Self, #error::Error> {
+                        let mut #segments = #segments_expr;
+                        Ok(Self { #(#field_values,)* })
                     }
                 }
-            }
+            };
+        )
+    }
 
-            let field_attrs = fields.named.iter().map(|field| {
-                let mut skip = None;
-                let mut with = None;
-                for attr in &field.attrs {
+    fn genrics(&self) -> impl Iterator<Item = syn::GenericParam> + '_ {
+        let Self { lifetime, .. } = self;
+
+        iter::once(syn::parse_quote!(#lifetime)).chain(
+            self.input.generics.params.iter().cloned().map(|mut param| {
+                match &mut param {
+                    syn::GenericParam::Lifetime(param) => {
+                        param.attrs.clear();
+                    }
+                    syn::GenericParam::Type(param) => {
+                        param.eq_token = None;
+                        param.default = None;
+                    }
+                    syn::GenericParam::Const(param) => {
+                        param.eq_token = None;
+                        param.default = None;
+                    }
+                }
+                param
+            }),
+        )
+    }
+
+    fn self_ty(&self) -> syn::Type {
+        let ident = &self.input.ident;
+
+        let generic_params =
+            self.input
+                .generics
+                .params
+                .iter()
+                .map(|param| -> syn::GenericArgument {
+                    match param {
+                        syn::GenericParam::Lifetime(param) => {
+                            let lifetime = &param.lifetime;
+                            syn::parse_quote!(#lifetime)
+                        }
+                        syn::GenericParam::Type(param) => {
+                            let ident = &param.ident;
+                            syn::parse_quote!(#ident)
+                        }
+                        syn::GenericParam::Const(param) => {
+                            let ident = &param.ident;
+                            syn::parse_quote!(#ident)
+                        }
+                    }
+                });
+        syn::parse_quote!(#ident<#(#generic_params,)*>)
+    }
+
+    fn where_predicates(&self) -> impl Iterator<Item = syn::Result<syn::WherePredicate>> + '_ {
+        let Self { decode, .. } = self;
+
+        self.fields()
+            .map(move |field| {
+                let field = field?;
+                let ty = field.ty;
+                let segment_ty = self.segment_ty()?;
+                if let Some(with) = &field.with {
+                    Ok(syn::parse_quote!(#with: #decode::Decoder<#segment_ty, #ty>))
+                } else {
+                    Ok(syn::parse_quote!(#ty: #decode::Decode<#segment_ty>))
+                }
+            })
+            .chain(
+                self.input
+                    .generics
+                    .where_clause
+                    .iter()
+                    .flat_map(|where_clause| &where_clause.predicates)
+                    .cloned()
+                    .map(Ok),
+            )
+    }
+
+    fn segments_expr(&self) -> syn::Result<syn::Expr> {
+        let Self { value, .. } = self;
+
+        if let Some(pat) = self.attrs()?.pat {
+            Ok(syn::parse_quote!(#value.split(#pat)))
+        } else {
+            Ok(syn::parse_quote!(#value.chars()))
+        }
+    }
+
+    fn segment_ty(&self) -> syn::Result<syn::Type> {
+        let Self { lifetime, .. } = self;
+
+        if self.attrs()?.pat.is_some() {
+            Ok(syn::parse_quote!(&#lifetime str))
+        } else {
+            Ok(syn::parse_quote!(char))
+        }
+    }
+
+    fn field_values(&self) -> impl Iterator<Item = syn::Result<syn::FieldValue>> + '_ {
+        let Self {
+            decode,
+            error,
+            std,
+            tracing,
+            segments,
+            ..
+        } = self;
+
+        self.fields().map(move |field| {
+            let field = field?;
+            let ident = field.ident;
+            let ty = field.ty;
+            let segments: syn::Expr = if let Some(skip) = &field.skip {
+                syn::parse_quote!(#segments.by_ref().skip(#skip))
+            } else {
+                syn::parse_quote!(#segments)
+            };
+            let segment_ty = self.segment_ty()?;
+            let decode: syn::TypePath = if let Some(with) = &field.with {
+                syn::parse_quote!(<#with as #decode::Decoder<#segment_ty, #ty>>::decode)
+            } else {
+                syn::parse_quote!(<#ty as #decode::Decode<#segment_ty>>::decode)
+            };
+            Ok(syn::parse_quote!(
+                #ident: {
+                    let _span = #tracing::info_span!(#std::stringify!(#ident)).entered();
+                    #decode(#segments.next().ok_or(#error::Error::InsufficientData)?)?
+                }
+            ))
+        })
+    }
+}
+
+struct Attrs {
+    pat: Option<syn::LitChar>,
+}
+impl Generator<'_> {
+    fn attrs(&self) -> syn::Result<Attrs> {
+        let mut this = Attrs { pat: None };
+        for attr in &self.input.attrs {
+            if attr.path().is_ident("decode") {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("pat") {
+                        this.pat = Some(meta.value()?.parse()?);
+                        Ok(())
+                    } else {
+                        Err(meta.error("unimplemented"))
+                    }
+                })?;
+            }
+        }
+        Ok(this)
+    }
+}
+
+struct FieldNamed<'a> {
+    ident: &'a syn::Ident,
+    ty: &'a syn::Type,
+    skip: Option<syn::LitInt>,
+    with: Option<syn::Type>,
+}
+impl Generator<'_> {
+    fn fields(&self) -> impl Iterator<Item = syn::Result<FieldNamed<'_>>> + '_ {
+        self.fields.named.iter().map(|field| {
+            field.attrs.iter().try_fold(
+                FieldNamed {
+                    ident: field
+                        .ident
+                        .as_ref()
+                        .ok_or_else(|| syn::Error::new(field.span(), "missing ident"))?,
+                    ty: &field.ty,
+                    skip: None,
+                    with: None,
+                },
+                |mut this, attr| {
                     if attr.path().is_ident("decode") {
                         attr.parse_nested_meta(|meta| {
                             if meta.path.is_ident("skip") {
-                                skip = Some(meta.value()?.parse::<syn::LitInt>()?);
+                                this.skip = Some(meta.value()?.parse()?);
                                 Ok(())
                             } else if meta.path.is_ident("with") {
-                                with = Some(meta.value()?.parse::<syn::Type>()?);
+                                this.with = Some(meta.value()?.parse()?);
                                 Ok(())
                             } else {
                                 Err(meta.error("unimplemented"))
                             }
                         })?
                     }
-                }
-                Ok((skip, with))
-            });
-            let field_attrs = match field_attrs.collect::<syn::Result<Vec<_>>>() {
-                Ok(v) => v,
-                Err(e) => return e.into_compile_error().into(),
-            };
-
-            let self_ty = {
-                let ident = &input.ident;
-                let generic_params = input.generics.params.iter().map(|param| match param {
-                    syn::GenericParam::Lifetime(param) => param.lifetime.to_token_stream(),
-                    syn::GenericParam::Type(param) => param.ident.to_token_stream(),
-                    syn::GenericParam::Const(param) => param.ident.to_token_stream(),
-                });
-                quote::quote!(#ident<#(#generic_params,)*>)
-            };
-            let generics = iter::once(quote::quote!('decode)).chain(
-                input
-                    .generics
-                    .params
-                    .iter()
-                    .cloned()
-                    .map(|param| match param {
-                        syn::GenericParam::Lifetime(param) => param.lifetime.into_token_stream(),
-                        syn::GenericParam::Type(mut param) => {
-                            param.eq_token = None;
-                            param.default = None;
-                            param.into_token_stream()
-                        }
-                        syn::GenericParam::Const(mut param) => {
-                            param.eq_token = None;
-                            param.default = None;
-                            param.into_token_stream()
-                        }
-                    }),
-            );
-            let segment = if pat.is_some() {
-                quote::quote!(&'decode str)
-            } else {
-                quote::quote!(char)
-            };
-            let where_predicates = fields
-                .named
-                .iter()
-                .zip(&field_attrs)
-                .map(|(field, (_, with))| {
-                    let ty = &field.ty;
-                    if let Some(with) = with {
-                        quote::quote!(#with: __Decoder<#segment, #ty>)
-                    } else {
-                        quote::quote!(#ty: __Decode<#segment>)
-                    }
-                })
-                .chain(
-                    input
-                        .generics
-                        .where_clause
-                        .iter()
-                        .flat_map(|where_clause| &where_clause.predicates)
-                        .map(|predicate| predicate.into_token_stream()),
-                );
-            let segments = if let Some(pat) = &pat {
-                quote::quote!(value.split(#pat))
-            } else {
-                quote::quote!(value.chars())
-            };
-            let field_values = fields.named.iter().zip(&field_attrs).map(
-                |(field, (skip, with))| {
-                    let ident = field.ident.as_ref().unwrap();
-                    let ty = &field.ty;
-                    let segments = if let Some(skip) = skip {
-                        quote::quote!(segments.by_ref().skip(#skip))
-                    } else {
-                        quote::quote!(segments)
-                    };
-                    let decode = if let Some(with) = with {
-                        quote::quote!(<#with as __Decoder<#segment, #ty>>::decode)
-                    } else {
-                        quote::quote!(<#ty as __Decode<#segment>>::decode)
-                    };
-
-                    quote::quote!(
-                        #ident: {
-                            let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
-                            #decode(#segments.next().ok_or(__Error::InsufficientData)?)?
-                        }
-                    )
+                    Ok(this)
                 },
-            );
-
-            quote::quote!(
-                const _: () = {
-                    use crate::decode::Decode as __Decode;
-                    use crate::decode::Decoder as __Decoder;
-                    use crate::error::Error as __Error;
-                    use ::std as __std;
-                    use ::tracing as __tracing;
-
-                    impl<#(#generics,)*> __Decode<&'decode str> for #self_ty
-                    where
-                    Self: __std::fmt::Debug,
-                    #(#where_predicates,)*
-                    {
-                        #[__tracing::instrument(err, ret(level = __tracing::Level::DEBUG))]
-                        fn decode(value: &'decode str) -> Result<Self, __Error> {
-                            let mut segments = #segments;
-                            Ok(Self { #(#field_values,)* })
-                        }
-                    }
-                };
             )
-            .into()
-        }
-        _ => quote::quote!(::core::compile_error!("unimplemented")).into(),
+        })
     }
+}
+
+fn into_compile_error<I, T>(iter: I) -> impl Iterator<Item = proc_macro2::TokenStream>
+where
+    I: IntoIterator<Item = syn::Result<T>>,
+    T: quote::ToTokens,
+{
+    iter.into_iter().map(|item| match item {
+        Ok(v) => v.into_token_stream(),
+        Err(e) => e.into_compile_error(),
+    })
 }
