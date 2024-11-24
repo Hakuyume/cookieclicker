@@ -1,5 +1,5 @@
 [workspace]
-members = ["automation","dump-influxdb", "firefox-exporter", "save", "save-derive"]
+members = ["agent", "automation", "dump-influxdb", "firefox-exporter", "save", "save-derive"]
 resolver = "2"
 
 [workspace.dependencies]

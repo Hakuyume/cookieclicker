@@ -8,8 +8,3 @@ fantoccini.workspace = true
 futures.workspace = true
 tokio = { workspace = true, features = ["time"] }
 tracing.workspace = true
-
-[dev-dependencies]
-anyhow.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing-subscriber.workspace = true
