@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[allow(clippy::manual_non_exhaustive)]
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = '|')]
+#[decode(split = '|')]
 pub struct Save {
     pub game_version: GameVersion,
     #[decode(skip = 1)]
@@ -21,13 +21,13 @@ pub struct Save {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ';')]
+#[decode(split = ';')]
 pub struct GameVersion {
     pub game_version: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ';')]
+#[decode(split = ';')]
 pub struct RunDetails {
     pub ascension_start: u64,
     pub legacy_start: u64,
@@ -38,7 +38,7 @@ pub struct RunDetails {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ',')]
+#[decode(split = ',')]
 pub struct YouAppearance {
     pub hair: usize,
     pub hair_color: usize,
@@ -50,13 +50,14 @@ pub struct YouAppearance {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[non_exhaustive]
+#[decode(split = "")]
 pub struct Preferences {
+    #[decode(skip = 1)]
     pub particles: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ';')]
+#[decode(split = ';')]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
     pub cookies_baked: f64,
@@ -77,7 +78,7 @@ pub struct MiscellaneousGameData {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ';')]
+#[decode(split = ';')]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
     pub grandmas: BuildingDataEntry,
@@ -102,7 +103,7 @@ pub struct BuildingData {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(pat = ',')]
+#[decode(split = ',')]
 pub struct BuildingDataEntry<M = ()> {
     pub amount_owned: u64,
     pub amount_bought: u64,

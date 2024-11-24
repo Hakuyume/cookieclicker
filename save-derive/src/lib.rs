@@ -20,7 +20,7 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
             tracing: syn::parse_quote!(__tracing),
 
             lifetime: syn::parse_quote!('__decode),
-            segments: syn::parse_quote!(segments),
+            split: syn::parse_quote!(split),
             value: syn::parse_quote!(value),
         }
         .generate()
@@ -40,7 +40,7 @@ struct Generator<'a> {
     tracing: syn::Ident,
 
     lifetime: syn::Lifetime,
-    segments: syn::Ident,
+    split: syn::Ident,
     value: syn::Ident,
 }
 
@@ -52,7 +52,7 @@ impl Generator<'_> {
             std,
             tracing,
             lifetime,
-            segments,
+            split,
             value,
             ..
         } = self;
@@ -61,10 +61,11 @@ impl Generator<'_> {
         let generics = self.genrics();
         let self_ty = self.self_ty();
         let where_predicates = into_compile_error(self.where_predicates());
-        let segments_expr = self.segments_expr().map_or_else(
-            syn::Error::into_compile_error,
-            quote::ToTokens::into_token_stream,
-        );
+        let split_pat = self
+            .attrs()
+            .map_or_else(syn::Error::into_compile_error, |attrs| {
+                attrs.split.into_token_stream()
+            });
         let field_values = into_compile_error(self.field_values());
 
         syn::parse_quote!(
@@ -74,14 +75,14 @@ impl Generator<'_> {
                 use ::std as #std;
                 use ::tracing as #tracing;
 
-                impl<#(#generics,)*> #decode::Decoder<&#lifetime str, #self_ty> for #decode::Standard
+                impl<#(#generics,)*> #decode::Decoder<#lifetime, #self_ty> for #decode::Standard
                 where
                 #self_ty: #std::fmt::Debug,
                 #(#where_predicates,)*
                 {
                     #[#tracing::instrument(err, ret(level = #tracing::Level::DEBUG))]
                     fn decode(#value: &#lifetime str) -> Result<#self_ty, #error::Error> {
-                        let mut #segments = #segments_expr;
+                        let mut #split = #value.split(#split_pat);
                         Ok(#ident { #(#field_values,)* })
                     }
                 }
@@ -140,15 +141,16 @@ impl Generator<'_> {
     }
 
     fn where_predicates(&self) -> impl Iterator<Item = syn::Result<syn::WherePredicate>> + '_ {
-        let Self { decode, .. } = self;
+        let Self {
+            decode, lifetime, ..
+        } = self;
 
         self.fields()
             .map(move |field| {
                 let field = field?;
                 let FieldNamed { ty, with, .. } = &field;
 
-                let segment_ty = self.segment_ty()?;
-                Ok(syn::parse_quote!(#with: #decode::Decoder<#segment_ty, #ty>))
+                Ok(syn::parse_quote!(#with: #decode::Decoder<#lifetime, #ty>))
             })
             .chain(
                 self.input
@@ -161,33 +163,14 @@ impl Generator<'_> {
             )
     }
 
-    fn segments_expr(&self) -> syn::Result<syn::Expr> {
-        let Self { value, .. } = self;
-
-        if let Some(pat) = self.attrs()?.pat {
-            Ok(syn::parse_quote!(#value.split(#pat)))
-        } else {
-            Ok(syn::parse_quote!(#value.chars()))
-        }
-    }
-
-    fn segment_ty(&self) -> syn::Result<syn::Type> {
-        let Self { lifetime, .. } = self;
-
-        if self.attrs()?.pat.is_some() {
-            Ok(syn::parse_quote!(&#lifetime str))
-        } else {
-            Ok(syn::parse_quote!(char))
-        }
-    }
-
     fn field_values(&self) -> impl Iterator<Item = syn::Result<syn::FieldValue>> + '_ {
         let Self {
             decode,
             error,
             std,
             tracing,
-            segments,
+            lifetime,
+            split,
             ..
         } = self;
 
@@ -200,18 +183,17 @@ impl Generator<'_> {
                 with,
             } = &field;
 
-            let segments: syn::Expr = if let Some(skip) = skip {
-                syn::parse_quote!(#segments.by_ref().skip(#skip))
+            let split: syn::Expr = if let Some(skip) = skip {
+                syn::parse_quote!(#split.by_ref().skip(#skip))
             } else {
-                syn::parse_quote!(#segments)
+                syn::parse_quote!(#split)
             };
-            let segment_ty = self.segment_ty()?;
-            let decode: syn::TypePath =
-                syn::parse_quote!(<#with as #decode::Decoder<#segment_ty, #ty>>::decode);
             Ok(syn::parse_quote!(
                 #ident: {
                     let _span = #tracing::info_span!(#std::stringify!(#ident)).entered();
-                    #decode(#segments.next().ok_or(#error::Error::InsufficientData)?)?
+                    <#with as #decode::Decoder<#lifetime, #ty>>::decode(
+                        #split.next().ok_or(#error::Error::InsufficientData)?
+                    )?
                 }
             ))
         })
@@ -219,16 +201,16 @@ impl Generator<'_> {
 }
 
 struct Attrs {
-    pat: Option<syn::LitChar>,
+    split: syn::Expr,
 }
 impl Generator<'_> {
     fn attrs(&self) -> syn::Result<Attrs> {
-        let mut this = Attrs { pat: None };
+        let mut split = None;
         for attr in &self.input.attrs {
             if attr.path().is_ident("decode") {
                 attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("pat") {
-                        this.pat = Some(meta.value()?.parse()?);
+                    if meta.path.is_ident("split") {
+                        split = Some(meta.value()?.parse()?);
                         Ok(())
                     } else {
                         Err(meta.error("unimplemented"))
@@ -236,7 +218,9 @@ impl Generator<'_> {
                 })?;
             }
         }
-        Ok(this)
+        Ok(Attrs {
+            split: split.ok_or_else(|| syn::Error::new(self.input.span(), "missing split"))?,
+        })
     }
 }
 
