@@ -24,24 +24,13 @@ pub(super) fn derive(input: &super::Input) -> syn::Item {
                 syn::parse_quote!(value.split("").filter(|s| !s.is_empty()))
             };
             let field_values = fields.iter().map(
-                |super::FieldNamed {
-                     as_,
-                     skip,
-                     ident,
-                     ty,
-                 }|
-                 -> syn::FieldValue {
+                |super::FieldNamed { as_, ident, ty }| -> syn::FieldValue {
                     let as_ = as_.as_ref().unwrap_or(&as_default);
-                    let split: syn::Expr = if let Some(skip) = skip {
-                        syn::parse_quote!(split.by_ref().skip(#skip))
-                    } else {
-                        syn::parse_quote!(split)
-                    };
                     syn::parse_quote!(
                         #ident: {
                             let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
                             <#as_ as __format::DecodeAs<'__decode, #ty>>::decode_as(
-                                #split.next().ok_or(__error::Error::InsufficientData)?
+                                split.next().ok_or(__error::Error::InsufficientData)?
                             )?
                         }
                     )

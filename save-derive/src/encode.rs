@@ -19,31 +19,13 @@ pub(super) fn derive(input: &super::Input) -> syn::Item {
                 },
             ));
             let blocks = fields.iter().enumerate().map(
-                |(
-                    i,
-                    super::FieldNamed {
-                        as_,
-                        skip,
-                        ident,
-                        ty,
-                    },
-                )|
-                 -> syn::Block {
+                |(i, super::FieldNamed { as_, ident, ty })| -> syn::Block {
                     let as_ = as_.as_ref().unwrap_or(&as_default);
-                    let count: syn::Expr = match (i, skip) {
-                        (0, Some(skip)) => syn::parse_quote!(#skip),
-                        (0, None) => syn::parse_quote!(0),
-                        (_, Some(skip)) => syn::parse_quote!(#skip + 1),
-                        (_, None) => syn::parse_quote!(1),
+                    let split: Option<syn::Stmt> = if let (Some(split), 0) = (split, i) {
+                        Some(syn::parse_quote!(__fmt::Display::fmt(&#split, f)?;))
+                    } else {
+                        None
                     };
-                    let split = split.as_ref().map(|split| -> syn::Expr {
-                        syn::parse_quote!(
-                            #[allow(clippy::reversed_empty_ranges)]
-                            for _ in 0..#count {
-                                __fmt::Display::fmt(&#split, f)?;
-                            }
-                        )
-                    });
                     syn::parse_quote!({
                         #split
                         <#as_ as __format::EncodeAs<#ty>>::encode_as(&self.#ident, f)?;

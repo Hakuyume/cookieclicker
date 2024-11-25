@@ -29,7 +29,6 @@ enum Input {
 
 struct FieldNamed {
     as_: Option<syn::Type>,
-    skip: Option<syn::Expr>,
 
     ident: syn::Ident,
     ty: syn::Type,
@@ -65,15 +64,11 @@ impl syn::parse::Parse for Input {
                         let span = field.span();
 
                         let mut as_ = None;
-                        let mut skip = None;
                         for attr in &field.attrs {
                             if attr.path().is_ident("format") {
                                 attr.parse_nested_meta(|meta| {
                                     if meta.path.is_ident("as") {
                                         as_ = Some(meta.value()?.parse()?);
-                                        Ok(())
-                                    } else if meta.path.is_ident("skip") {
-                                        skip = Some(meta.value()?.parse()?);
                                         Ok(())
                                     } else {
                                         Err(meta.error("unknown"))
@@ -84,8 +79,6 @@ impl syn::parse::Parse for Input {
 
                         Ok(FieldNamed {
                             as_,
-                            skip,
-
                             ident: field.ident.ok_or(syn::Error::new(span, "missing ident"))?,
                             ty: field.ty,
                         })

@@ -17,7 +17,8 @@ pub use upgrades::Upgrade;
 #[format(split = '|')]
 pub struct Save {
     pub game_version: GameVersion,
-    #[format(skip = 1)]
+    #[serde(skip)]
+    empty: (),
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
