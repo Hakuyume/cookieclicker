@@ -9,7 +9,7 @@ pub enum Error {
     #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
 
-    #[error("cannot parse bool")]
+    #[error("must be \"0\" or \"1\"")]
     Bool,
     #[error("insufficient data")]
     InsufficientData,
