@@ -125,11 +125,16 @@ pub struct MiscellaneousGameData {
     pub heavenly_chips_spent: f64,
     heavenly_cookies: String,
     pub ascension_mode: bool,
-    pub permanent_upgrade_i: usize,
-    pub permanent_upgrade_ii: usize,
-    pub permanent_upgrade_iii: usize,
-    pub permanent_upgrade_iv: usize,
-    pub permanent_upgrade_v: usize,
+    #[format(as = format::NoneAsNegative)]
+    pub permanent_upgrade_i: Option<usize>,
+    #[format(as = format::NoneAsNegative)]
+    pub permanent_upgrade_ii: Option<usize>,
+    #[format(as = format::NoneAsNegative)]
+    pub permanent_upgrade_iii: Option<usize>,
+    #[format(as = format::NoneAsNegative)]
+    pub permanent_upgrade_iv: Option<usize>,
+    #[format(as = format::NoneAsNegative)]
+    pub permanent_upgrade_v: Option<usize>,
     pub dragon_level: usize,
     pub dragon_aura: usize,
     pub dragon_aura_2: usize,
@@ -191,3 +196,6 @@ pub struct BuildingDataEntry<M = ()> {
     pub muted: bool,
     pub highest_amount: u64,
 }
+
+#[cfg(test)]
+mod tests;

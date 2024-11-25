@@ -13,25 +13,27 @@ pub(crate) use timestamp::Timestamp;
 
 #[tracing::instrument(err)]
 pub fn decode(value: &str) -> Result<super::Save, Error> {
-    let value = urlencoding::decode(value)?;
-    let value = value.trim_end_matches("!END!");
-    let value = BASE64_STANDARD.decode(value)?;
-    let value = String::from_utf8(value)?;
-    tracing::debug!(value);
-    Decode::decode(&value)
+    Decode::decode(&decode_base64(value)?)
 }
 
 #[tracing::instrument]
 pub fn encode(value: &super::Save) -> String {
-    let value = value.display().to_string();
-    tracing::debug!(value);
+    encode_base64(&value.display().to_string())
+}
+
+#[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+pub(crate) fn decode_base64(value: &str) -> Result<String, Error> {
+    let value = urlencoding::decode(value)?;
+    let value = value.trim_end_matches("!END!");
+    let value = BASE64_STANDARD.decode(value)?;
+    Ok(String::from_utf8(value)?)
+}
+
+#[tracing::instrument(ret(level = tracing::Level::DEBUG))]
+pub(crate) fn encode_base64(value: &str) -> String {
     let mut value = BASE64_STANDARD.encode(&value);
     value.push_str("!END!");
     urlencoding::encode(&value).into_owned()
-}
-
-pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
-    value.split("").filter(|v| !v.is_empty())
 }
 
 pub(crate) trait Decode<'a>: Sized {
@@ -66,6 +68,10 @@ where
     }
 }
 
+pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
+    value.split("").filter(|v| !v.is_empty())
+}
+
 pub(crate) trait EncodeExt: Encode {
     fn display(&self) -> impl fmt::Display + '_ {
         struct Display<'a, T, F>(&'a T, F)
@@ -85,3 +91,18 @@ pub(crate) trait EncodeExt: Encode {
     }
 }
 impl<T> EncodeExt for T where T: Encode {}
+
+#[cfg(test)]
+mod tests {
+    use rand::distributions::DistString;
+
+    #[test]
+    fn test_base64() {
+        let mut rng = rand::thread_rng();
+        let value = rand::distributions::Standard.sample_string(&mut rng, 4096);
+        assert_eq!(
+            super::decode_base64(&super::encode_base64(&value)).unwrap(),
+            value,
+        );
+    }
+}
