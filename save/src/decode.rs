@@ -56,15 +56,17 @@ impl Decoder<'_, super::Garden> for Standard {
     fn decode(value: &str) -> Result<super::Garden, Error> {
         #[derive(Debug, Decode)]
         #[decode(split = ' ')]
-        struct Sections<'a> {
-            a: A,
-            b: &'a str,
-            c: &'a str,
+        struct Sections {
+            inner: Inner,
+            #[decode(with = Custom)]
+            unlocked_seeds: Vec<bool>,
+            #[decode(with = Custom)]
+            farm_grid_data: Vec<Option<super::FarmGridData>>,
         }
 
         #[derive(Debug, Decode)]
         #[decode(split = ':')]
-        struct A {
+        struct Inner {
             time_of_next_tick: u64,
             soil_type: usize,
             time_of_next_soil_change: u64,
@@ -73,34 +75,58 @@ impl Decoder<'_, super::Garden> for Standard {
             total_harvests: u64,
         }
 
-        let sections = <Standard as Decoder<'_, Sections>>::decode(value)?;
+        struct Custom;
+        impl Decoder<'_, Vec<bool>> for Custom {
+            #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+            fn decode(value: &str) -> Result<Vec<bool>, Error> {
+                value
+                    .split("")
+                    .filter(|s| !s.is_empty())
+                    .map(Standard::decode)
+                    .collect()
+            }
+        }
+        impl Decoder<'_, Vec<Option<super::FarmGridData>>> for Custom {
+            #[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+            fn decode(value: &str) -> Result<Vec<Option<super::FarmGridData>>, Error> {
+                value
+                    .split(':')
+                    .tuples()
+                    .map(|(id, age)| {
+                        let id = Standard::decode(id)?;
+                        let age = Standard::decode(age)?;
+                        if id == 0 {
+                            Ok(None)
+                        } else {
+                            Ok(Some(super::FarmGridData { id, age }))
+                        }
+                    })
+                    .collect()
+            }
+        }
+
+        let Sections {
+            inner:
+                Inner {
+                    time_of_next_tick,
+                    soil_type,
+                    time_of_next_soil_change,
+                    frozen_garden,
+                    harvests_this_ascension,
+                    total_harvests,
+                },
+            unlocked_seeds,
+            farm_grid_data,
+        } = Standard::decode(value)?;
         Ok(super::Garden {
-            time_of_next_tick: sections.a.time_of_next_tick,
-            soil_type: sections.a.soil_type,
-            time_of_next_soil_change: sections.a.time_of_next_soil_change,
-            frozen_garden: sections.a.frozen_garden,
-            harvests_this_ascension: sections.a.harvests_this_ascension,
-            total_harvests: sections.a.total_harvests,
-            unlocked_seeds: sections
-                .b
-                .split("")
-                .filter(|s| !s.is_empty())
-                .map(Standard::decode)
-                .collect::<Result<Vec<_>, _>>()?,
-            farm_grid_data: sections
-                .c
-                .split(':')
-                .tuples()
-                .map(|(id, age)| {
-                    let id = Standard::decode(id)?;
-                    let age = Standard::decode(age)?;
-                    if id == 0 {
-                        Ok(None)
-                    } else {
-                        Ok(Some(super::FarmGridData { id, age }))
-                    }
-                })
-                .collect::<Result<Vec<_>, Error>>()?,
+            time_of_next_tick,
+            soil_type,
+            time_of_next_soil_change,
+            frozen_garden,
+            harvests_this_ascension,
+            total_harvests,
+            unlocked_seeds,
+            farm_grid_data,
         })
     }
 }
