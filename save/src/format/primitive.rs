@@ -14,7 +14,7 @@ impl Decode<'_> for bool {
         match value {
             "0" => Ok(false),
             "1" => Ok(true),
-            _ => Err(Error::Bool),
+            _ => Err(Error::InvalidData),
         }
     }
 }
@@ -46,4 +46,5 @@ macro_rules! from_str {
 from_str!(u8);
 from_str!(u64);
 from_str!(usize);
+from_str!(i64);
 from_str!(f64);

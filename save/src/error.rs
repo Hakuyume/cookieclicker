@@ -9,10 +9,8 @@ pub enum Error {
     #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
 
-    #[error("must be \"0\" or \"1\"")]
-    Bool,
     #[error("insufficient data")]
     InsufficientData,
-    #[error("timestamp out of range ")]
-    TimestampOutOfRange,
+    #[error("invalid data")]
+    InvalidData,
 }
