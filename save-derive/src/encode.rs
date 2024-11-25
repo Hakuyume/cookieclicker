@@ -38,13 +38,14 @@ pub(super) fn derive(input: &super::Input) -> syn::Item {
                     };
                     let split = split.as_ref().map(|split| -> syn::Expr {
                         syn::parse_quote!(
+                            #[allow(clippy::reversed_empty_ranges)]
                             for _ in 0..#count {
                                 __fmt::Display::fmt(&#split, f)?;
                             }
                         )
                     });
                     syn::parse_quote!({
-                         #split
+                        #split
                         <#as_ as __format::EncodeAs<#ty>>::encode_as(&self.#ident, f)?;
                     })
                 },
