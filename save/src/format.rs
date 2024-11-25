@@ -1,12 +1,14 @@
 mod none_as_empty;
 mod none_as_negative;
 mod primitive;
+mod timestamp;
 
 use crate::error::Error;
 use base64::prelude::{Engine, BASE64_STANDARD};
 pub(crate) use none_as_empty::NoneAsEmpty;
 pub(crate) use none_as_negative::NoneAsNegative;
 pub(crate) use save_derive::Decode;
+pub(crate) use timestamp::Timestamp;
 
 #[tracing::instrument(err)]
 pub fn decode(value: &str) -> Result<super::Save, Error> {

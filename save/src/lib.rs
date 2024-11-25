@@ -5,6 +5,7 @@ mod format;
 mod garden;
 mod upgrades;
 
+use chrono::{DateTime, Utc};
 pub use error::Error;
 pub use format::decode;
 pub use garden::{FarmGridData, Garden};
@@ -34,9 +35,12 @@ pub struct GameVersion {
 #[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
 #[format(split = ';')]
 pub struct RunDetails {
-    pub ascension_start: u64,
-    pub legacy_start: u64,
-    pub last_opened: u64,
+    #[format(as = format::Timestamp)]
+    pub ascension_start: DateTime<Utc>,
+    #[format(as = format::Timestamp)]
+    pub legacy_start: DateTime<Utc>,
+    #[format(as = format::Timestamp)]
+    pub last_opened: DateTime<Utc>,
     pub bakery_name: String,
     pub seed: String,
     pub you_appearance: YouAppearance,

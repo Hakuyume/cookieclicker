@@ -1,13 +1,14 @@
 use crate::error::Error;
-use crate::format::{Decode, DecodeAs};
+use crate::format::{self, Decode, DecodeAs};
+use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Garden {
-    pub time_of_next_tick: u64,
+    pub time_of_next_tick: DateTime<Utc>,
     pub soil_type: usize,
-    pub time_of_next_soil_change: u64,
+    pub time_of_next_soil_change: DateTime<Utc>,
     pub frozen_garden: bool,
     pub harvests_this_ascension: u64,
     pub total_harvests: u64,
@@ -35,9 +36,11 @@ struct Format {
 #[derive(Decode)]
 #[format(split = ':')]
 struct Inner {
-    time_of_next_tick: u64,
+    #[format(as = format::Timestamp)]
+    time_of_next_tick: DateTime<Utc>,
     soil_type: usize,
-    time_of_next_soil_change: u64,
+    #[format(as = format::Timestamp)]
+    time_of_next_soil_change: DateTime<Utc>,
     frozen_garden: bool,
     harvests_this_ascension: u64,
     total_harvests: u64,

@@ -13,4 +13,6 @@ pub enum Error {
     Bool,
     #[error("insufficient data")]
     InsufficientData,
+    #[error("timestamp out of range ")]
+    TimestampOutOfRange,
 }
