@@ -1,7 +1,8 @@
 use crate::error::Error;
-use crate::format::{Decode, DecodeAs};
+use crate::format::{Decode, DecodeAs, Encode, EncodeAs};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Upgrade {
@@ -24,5 +25,15 @@ impl DecodeAs<'_, Vec<Upgrade>> for Custom {
                 Ok(Upgrade { unlocked, bought })
             })
             .collect()
+    }
+}
+
+impl EncodeAs<Vec<Upgrade>> for Custom {
+    fn encode_as(value: &Vec<Upgrade>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for value in value {
+            Encode::encode(&value.unlocked, f)?;
+            Encode::encode(&value.bought, f)?;
+        }
+        Ok(())
     }
 }

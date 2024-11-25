@@ -7,13 +7,13 @@ mod upgrades;
 
 use chrono::{DateTime, Utc};
 pub use error::Error;
-pub use format::decode;
+pub use format::{decode, encode};
 pub use garden::{FarmGridData, Garden};
 use serde::{Deserialize, Serialize};
 pub use upgrades::Upgrade;
 
 #[allow(clippy::manual_non_exhaustive)]
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = '|')]
 pub struct Save {
     pub game_version: GameVersion,
@@ -26,13 +26,13 @@ pub struct Save {
     pub upgrades: Vec<Upgrade>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ';')]
 pub struct GameVersion {
     pub game_version: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ';')]
 pub struct RunDetails {
     #[format(as = format::Timestamp)]
@@ -46,7 +46,7 @@ pub struct RunDetails {
     pub you_appearance: YouAppearance,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ',')]
 pub struct YouAppearance {
     pub hair: usize,
@@ -58,14 +58,12 @@ pub struct YouAppearance {
     pub extra_b: usize,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
-#[format(split = "")]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 pub struct Preferences {
-    #[format(skip = 1)]
     pub particles: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ';')]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
@@ -86,7 +84,7 @@ pub struct MiscellaneousGameData {
     pub ascensions: u64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ';')]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
@@ -111,7 +109,7 @@ pub struct BuildingData {
     pub yous: BuildingDataEntry,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
 #[format(split = ',')]
 pub struct BuildingDataEntry<M = ()> {
     pub amount_owned: u64,

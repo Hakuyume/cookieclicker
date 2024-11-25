@@ -1,8 +1,9 @@
 use crate::error::Error;
-use crate::format::{self, Decode, DecodeAs};
+use crate::format::{self, Decode, DecodeAs, Encode, EncodeAs};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Garden {
@@ -104,5 +105,11 @@ impl Decode<'_> for Garden {
             unlocked_seeds,
             farm_grid_data,
         })
+    }
+}
+
+impl Encode for Garden {
+    fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
     }
 }
