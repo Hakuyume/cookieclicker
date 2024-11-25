@@ -54,7 +54,7 @@ where
     T::Error: Display + Error + Send,
     T::Element: Send,
 {
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     pub async fn export_save(&mut self) -> Result<String, T::Error> {
         self.clear().await?;
 
@@ -77,7 +77,7 @@ where
         Ok(save)
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     pub async fn import_save(&mut self, save: &str) -> Result<(), T::Error> {
         self.clear().await?;
 
@@ -100,20 +100,20 @@ where
         Ok(())
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     pub async fn big_cookie(&mut self) -> Result<(), T::Error> {
         self.clear().await?;
         self.click_maybe(BIG_COOKIE).await?;
         Ok(())
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     pub async fn buy_all_upgrades(&mut self) -> Result<bool, T::Error> {
         self.clear().await?;
         self.click_maybe(STORE_BUY_ALL_UPGRADES).await
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     async fn clear(&mut self) -> Result<(), T::Error> {
         self.click_maybe(LANG_SELECT_ENGLISH).await?;
         self.retry(|this| async move {
@@ -135,7 +135,7 @@ where
         Ok(())
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     async fn click_ensure(&mut self, locator: (LocatorStrategy, &str)) -> Result<(), T::Error> {
         self.retry(|this| async move {
             this.retry_finish(
@@ -154,7 +154,7 @@ where
         .await
     }
 
-    #[tracing::instrument(err, ret(level = tracing::Level::DEBUG), skip(self))]
+    #[tracing::instrument(err, skip(self))]
     async fn click_maybe(&mut self, locator: (LocatorStrategy, &str)) -> Result<bool, T::Error> {
         let output: Result<_, T::Error> = async {
             let element = self.0.find(locator).await?;
