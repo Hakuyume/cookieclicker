@@ -12,6 +12,7 @@ pub struct Upgrade {
 pub(crate) struct Custom;
 
 impl DecodeAs<'_, Vec<Upgrade>> for Custom {
+    #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Vec<Upgrade>, Error> {
         value
             .split("")

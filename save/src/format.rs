@@ -8,7 +8,7 @@ pub(crate) use none_as_empty::NoneAsEmpty;
 pub(crate) use none_as_negative::NoneAsNegative;
 pub(crate) use save_derive::Decode;
 
-#[tracing::instrument(err, ret(level = tracing::Level::DEBUG))]
+#[tracing::instrument(err)]
 pub fn decode(value: &str) -> Result<super::Save, Error> {
     let value = urlencoding::decode(value)?;
     let value = value.trim_end_matches("!END!");

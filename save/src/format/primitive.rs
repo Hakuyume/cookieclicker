@@ -2,12 +2,14 @@ use super::Decode;
 use crate::error::Error;
 
 impl Decode<'_> for () {
+    #[tracing::instrument(err)]
     fn decode(_: &str) -> Result<Self, Error> {
         Ok(())
     }
 }
 
 impl Decode<'_> for bool {
+    #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         match value {
             "0" => Ok(false),
@@ -18,12 +20,14 @@ impl Decode<'_> for bool {
 }
 
 impl<'a> Decode<'a> for &'a str {
+    #[tracing::instrument(err)]
     fn decode(value: &'a str) -> Result<Self, Error> {
         Ok(value)
     }
 }
 
 impl Decode<'_> for String {
+    #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         Ok(value.to_owned())
     }
@@ -32,6 +36,7 @@ impl Decode<'_> for String {
 macro_rules! from_str {
     ($ty:ty) => {
         impl Decode<'_> for $ty {
+            #[tracing::instrument(err)]
             fn decode(value: &str) -> Result<Self, Error> {
                 Ok(value.parse()?)
             }

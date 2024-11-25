@@ -21,7 +21,7 @@ pub struct FarmGridData {
     pub age: u8,
 }
 
-#[derive(Debug, Decode)]
+#[derive(Decode)]
 #[format(split = ' ')]
 #[allow(dead_code)]
 struct Format {
@@ -32,7 +32,7 @@ struct Format {
     farm_grid_data: Vec<Option<FarmGridData>>,
 }
 
-#[derive(Debug, Decode)]
+#[derive(Decode)]
 #[format(split = ':')]
 struct Inner {
     time_of_next_tick: u64,
@@ -46,6 +46,7 @@ struct Inner {
 struct Custom;
 
 impl DecodeAs<'_, Vec<bool>> for Custom {
+    #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Vec<bool>, Error> {
         value
             .split("")
@@ -56,6 +57,7 @@ impl DecodeAs<'_, Vec<bool>> for Custom {
 }
 
 impl DecodeAs<'_, Vec<Option<FarmGridData>>> for Custom {
+    #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Vec<Option<FarmGridData>>, Error> {
         value
             .split(':')
@@ -74,6 +76,7 @@ impl DecodeAs<'_, Vec<Option<FarmGridData>>> for Custom {
 }
 
 impl Decode<'_> for Garden {
+    #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         let Format {
             inner:

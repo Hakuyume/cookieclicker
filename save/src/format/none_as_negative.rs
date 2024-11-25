@@ -4,6 +4,7 @@ use crate::error::Error;
 pub(crate) struct NoneAsNegative;
 
 impl DecodeAs<'_, Option<u64>> for NoneAsNegative {
+    #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Option<u64>, Error> {
         let value = value.parse::<i64>()?;
         if value >= 0 {

@@ -77,6 +77,7 @@ impl Generator<'_> {
                 where
                 #(#where_predicates,)*
                 {
+                    #[#tracing::instrument(err)]
                     fn decode(#value: &#lifetime str) -> Result<Self, #error::Error> {
                         let mut #split = #value.split(#split_pat);
                         Ok(Self { #(#field_values,)* })
