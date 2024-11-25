@@ -21,7 +21,7 @@ pub(super) fn derive(input: &super::Input) -> syn::Item {
             let split: syn::Expr = if let Some(split) = split {
                 syn::parse_quote!(value.split(#split))
             } else {
-                syn::parse_quote!(value.split("").filter(|s| !s.is_empty()))
+                syn::parse_quote!(__format::chars(value))
             };
             let field_values = fields.iter().map(
                 |super::FieldNamed { as_, ident, ty }| -> syn::FieldValue {

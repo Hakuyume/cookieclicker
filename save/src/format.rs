@@ -37,6 +37,10 @@ pub fn encode(value: &super::Save) -> String {
     urlencoding::encode(&value).into_owned()
 }
 
+pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
+    value.split("").filter(|v| !v.is_empty())
+}
+
 pub(crate) trait Decode<'a>: Sized {
     fn decode(value: &'a str) -> Result<Self, Error>;
 }

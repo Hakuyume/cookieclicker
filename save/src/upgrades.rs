@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::format::{Decode, DecodeAs, Encode, EncodeAs};
+use crate::format::{self, Decode, DecodeAs, Encode, EncodeAs};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -15,9 +15,7 @@ pub(crate) struct Custom;
 impl DecodeAs<'_, Vec<Upgrade>> for Custom {
     #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Vec<Upgrade>, Error> {
-        value
-            .split("")
-            .filter(|s| !s.is_empty())
+        format::chars(value)
             .tuples()
             .map(|(unlocked, bought)| {
                 let unlocked = Decode::decode(unlocked)?;
@@ -30,9 +28,9 @@ impl DecodeAs<'_, Vec<Upgrade>> for Custom {
 
 impl EncodeAs<Vec<Upgrade>> for Custom {
     fn encode_as(value: &Vec<Upgrade>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for value in value {
-            Encode::encode(&value.unlocked, f)?;
-            Encode::encode(&value.bought, f)?;
+        for v in value {
+            Encode::encode(&v.unlocked, f)?;
+            Encode::encode(&v.bought, f)?;
         }
         Ok(())
     }

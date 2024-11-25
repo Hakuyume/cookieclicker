@@ -23,18 +23,17 @@ pub struct FarmGridData {
     pub age: u8,
 }
 
-#[derive(Decode)]
+#[derive(Decode, Encode)]
 #[format(split = ' ')]
-#[allow(dead_code)]
-struct Format {
+struct Format<T, U> {
     inner: Inner,
     #[format(as = Custom)]
-    unlocked_seeds: Vec<bool>,
+    unlocked_seeds: T,
     #[format(as = Custom)]
-    farm_grid_data: Vec<Option<FarmGridData>>,
+    farm_grid_data: U,
 }
 
-#[derive(Decode)]
+#[derive(Decode, Encode)]
 #[format(split = ':')]
 struct Inner {
     #[format(as = format::Timestamp)]
@@ -52,11 +51,16 @@ struct Custom;
 impl DecodeAs<'_, Vec<bool>> for Custom {
     #[tracing::instrument(err)]
     fn decode_as(value: &str) -> Result<Vec<bool>, Error> {
-        value
-            .split("")
-            .filter(|s| !s.is_empty())
-            .map(Decode::decode)
-            .collect()
+        format::chars(value).map(Decode::decode).collect()
+    }
+}
+
+impl EncodeAs<&Vec<bool>> for Custom {
+    fn encode_as(value: &&Vec<bool>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for v in *value {
+            Encode::encode(v, f)?;
+        }
+        Ok(())
     }
 }
 
@@ -76,6 +80,24 @@ impl DecodeAs<'_, Vec<Option<FarmGridData>>> for Custom {
                 }
             })
             .collect()
+    }
+}
+
+impl EncodeAs<&Vec<Option<FarmGridData>>> for Custom {
+    fn encode_as(value: &&Vec<Option<FarmGridData>>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, v) in value.iter().enumerate() {
+            if i > 0 {
+                write!(f, ":")?;
+            }
+            if let Some(FarmGridData { id, age }) = v {
+                Encode::encode(id, f)?;
+                write!(f, ":")?;
+                Encode::encode(age, f)?;
+            } else {
+                write!(f, "0:0")?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -110,6 +132,30 @@ impl Decode<'_> for Garden {
 
 impl Encode for Garden {
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Ok(())
+        let Self {
+            time_of_next_tick,
+            soil_type,
+            time_of_next_soil_change,
+            frozen_garden,
+            harvests_this_ascension,
+            total_harvests,
+            ref unlocked_seeds,
+            ref farm_grid_data,
+        } = *self;
+        Encode::encode(
+            &Format {
+                inner: Inner {
+                    time_of_next_tick,
+                    soil_type,
+                    time_of_next_soil_change,
+                    frozen_garden,
+                    harvests_this_ascension,
+                    total_harvests,
+                },
+                unlocked_seeds,
+                farm_grid_data,
+            },
+            f,
+        )
     }
 }
