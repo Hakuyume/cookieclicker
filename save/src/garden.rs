@@ -20,7 +20,7 @@ pub struct Garden {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FarmGridData {
     pub id: usize,
-    pub age: u8,
+    pub age: u64,
 }
 
 #[derive(Decode, Encode)]

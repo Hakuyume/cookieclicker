@@ -54,6 +54,25 @@ impl Encode for String {
     }
 }
 
+impl Decode<'_> for f64 {
+    #[tracing::instrument(err)]
+    fn decode(value: &str) -> Result<Self, Error> {
+        Ok(value.parse()?)
+    }
+}
+impl Encode for f64 {
+    fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString#return_value
+        if self.abs() >= 1e21 {
+            write!(f, "{}", format!("{self:e}").replace('e', "e+"))
+        } else if self.abs() < 1e-6 {
+            write!(f, "{self:e}")
+        } else {
+            write!(f, "{self}")
+        }
+    }
+}
+
 macro_rules! display_from_str {
     ($ty:ty) => {
         impl Decode<'_> for $ty {
@@ -69,8 +88,22 @@ macro_rules! display_from_str {
         }
     };
 }
-display_from_str!(u8);
 display_from_str!(u64);
 display_from_str!(usize);
-display_from_str!(i64);
-display_from_str!(f64);
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Decode, EncodeExt};
+
+    #[test]
+    fn test_f64() {
+        fn check(value: &str) {
+            assert_eq!(f64::decode(value).unwrap().display().to_string(), value);
+        }
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString#using_tostring
+        check("3.1622776601683794e+21");
+        check("1000000000000000100");
+        check("17");
+        check("17.2");
+    }
+}

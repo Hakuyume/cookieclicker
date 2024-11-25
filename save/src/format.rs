@@ -23,14 +23,7 @@ pub fn decode(value: &str) -> Result<super::Save, Error> {
 
 #[tracing::instrument]
 pub fn encode(value: &super::Save) -> String {
-    struct Display<'a>(&'a super::Save);
-    impl fmt::Display for Display<'_> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            Encode::encode(self.0, f)
-        }
-    }
-
-    let value = Display(value).to_string();
+    let value = value.display().to_string();
     tracing::debug!(value);
     let mut value = BASE64_STANDARD.encode(&value);
     value.push_str("!END!");
@@ -72,3 +65,23 @@ where
         value.encode(f)
     }
 }
+
+pub(crate) trait EncodeExt: Encode {
+    fn display(&self) -> impl fmt::Display + '_ {
+        struct Display<'a, T, F>(&'a T, F)
+        where
+            T: ?Sized;
+        impl<T, F> fmt::Display for Display<'_, T, F>
+        where
+            T: ?Sized,
+            F: Fn(&T, &mut fmt::Formatter<'_>) -> fmt::Result,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.1(self.0, f)
+            }
+        }
+
+        Display(self, Self::encode)
+    }
+}
+impl<T> EncodeExt for T where T: Encode {}
