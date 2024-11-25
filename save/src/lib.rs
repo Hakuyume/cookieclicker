@@ -1,33 +1,38 @@
 // https://cookieclicker.fandom.com/wiki/Save
 
-mod decode;
 mod error;
+mod format;
+mod garden;
+mod upgrades;
 
-pub use decode::decode;
 pub use error::Error;
+pub use format::decode;
+pub use garden::{FarmGridData, Garden};
 use serde::{Deserialize, Serialize};
+pub use upgrades::Upgrade;
 
 #[allow(clippy::manual_non_exhaustive)]
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = '|')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = '|')]
 pub struct Save {
     pub game_version: GameVersion,
-    #[decode(skip = 1)]
+    #[format(skip = 1)]
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
     pub building_data: BuildingData,
+    #[format(as = upgrades::Custom)]
     pub upgrades: Vec<Upgrade>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ';')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ';')]
 pub struct GameVersion {
     pub game_version: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ';')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ';')]
 pub struct RunDetails {
     pub ascension_start: u64,
     pub legacy_start: u64,
@@ -37,8 +42,8 @@ pub struct RunDetails {
     pub you_appearance: YouAppearance,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ',')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ',')]
 pub struct YouAppearance {
     pub hair: usize,
     pub hair_color: usize,
@@ -49,15 +54,15 @@ pub struct YouAppearance {
     pub extra_b: usize,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = "")]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = "")]
 pub struct Preferences {
-    #[decode(skip = 1)]
+    #[format(skip = 1)]
     pub particles: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ';')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ';')]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
     pub cookies_baked: f64,
@@ -72,13 +77,13 @@ pub struct MiscellaneousGameData {
     pub elder_pledges_made: u64,
     pub time_left_in_elder_pledge: u64,
     pub currently_researching: usize,
-    #[decode(with = decode::NoneAsNegative)]
+    #[format(as = format::NoneAsNegative)]
     pub time_left_in_research: Option<u64>,
     pub ascensions: u64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ';')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ';')]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
     pub grandmas: BuildingDataEntry,
@@ -102,39 +107,15 @@ pub struct BuildingData {
     pub yous: BuildingDataEntry,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, decode::Decode)]
-#[decode(split = ',')]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Decode)]
+#[format(split = ',')]
 pub struct BuildingDataEntry<M = ()> {
     pub amount_owned: u64,
     pub amount_bought: u64,
     pub cookies_produced: f64,
     pub level: usize,
-    #[decode(with = decode::NoneAsEmpty)]
+    #[format(as = format::NoneAsEmpty)]
     pub minigame_data: Option<M>,
     pub muted: bool,
     pub highest_amount: u64,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Garden {
-    pub time_of_next_tick: u64,
-    pub soil_type: usize,
-    pub time_of_next_soil_change: u64,
-    pub frozen_garden: bool,
-    pub harvests_this_ascension: u64,
-    pub total_harvests: u64,
-    pub unlocked_seeds: Vec<bool>,
-    pub farm_grid_data: Vec<Option<FarmGridData>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct FarmGridData {
-    pub id: usize,
-    pub age: u8,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Upgrade {
-    pub unlocked: bool,
-    pub bought: bool,
 }

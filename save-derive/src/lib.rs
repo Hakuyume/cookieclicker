@@ -3,7 +3,7 @@ use quote::ToTokens;
 use std::iter;
 use syn::spanned::Spanned;
 
-#[proc_macro_derive(Decode, attributes(decode))]
+#[proc_macro_derive(Decode, attributes(format))]
 pub fn derive_decode(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     match &input.data {
@@ -14,8 +14,8 @@ pub fn derive_decode(input: TokenStream) -> TokenStream {
             input: &input,
             fields,
 
-            decode: syn::parse_quote!(__decode),
             error: syn::parse_quote!(__error),
+            format: syn::parse_quote!(__format),
             std: syn::parse_quote!(__std),
             tracing: syn::parse_quote!(__tracing),
 
@@ -34,8 +34,8 @@ struct Generator<'a> {
     input: &'a syn::DeriveInput,
     fields: &'a syn::FieldsNamed,
 
-    decode: syn::Ident,
     error: syn::Ident,
+    format: syn::Ident,
     std: syn::Ident,
     tracing: syn::Ident,
 
@@ -47,8 +47,8 @@ struct Generator<'a> {
 impl Generator<'_> {
     fn generate(&self) -> syn::Item {
         let Self {
-            decode,
             error,
+            format,
             std,
             tracing,
             lifetime,
@@ -56,8 +56,6 @@ impl Generator<'_> {
             value,
             ..
         } = self;
-        let ident = &self.input.ident;
-
         let generics = self.genrics();
         let self_ty = self.self_ty();
         let where_predicates = into_compile_error(self.where_predicates());
@@ -70,20 +68,18 @@ impl Generator<'_> {
 
         syn::parse_quote!(
             const _: () = {
-                use crate::decode as #decode;
                 use crate::error as #error;
+                use crate::format as #format;
                 use ::std as #std;
                 use ::tracing as #tracing;
 
-                impl<#(#generics,)*> #decode::Decoder<#lifetime, #self_ty> for #decode::Standard
+                impl<#(#generics,)*> #format::Decode<#lifetime> for #self_ty
                 where
-                #self_ty: #std::fmt::Debug,
                 #(#where_predicates,)*
                 {
-                    #[#tracing::instrument(err, ret(level = #tracing::Level::DEBUG))]
-                    fn decode(#value: &#lifetime str) -> Result<#self_ty, #error::Error> {
+                    fn decode(#value: &#lifetime str) -> Result<Self, #error::Error> {
                         let mut #split = #value.split(#split_pat);
-                        Ok(#ident { #(#field_values,)* })
+                        Ok(Self { #(#field_values,)* })
                     }
                 }
             };
@@ -142,15 +138,15 @@ impl Generator<'_> {
 
     fn where_predicates(&self) -> impl Iterator<Item = syn::Result<syn::WherePredicate>> + '_ {
         let Self {
-            decode, lifetime, ..
+            format, lifetime, ..
         } = self;
 
         self.fields()
             .map(move |field| {
                 let field = field?;
-                let FieldNamed { ty, with, .. } = &field;
+                let FieldNamed { ty, as_, .. } = &field;
 
-                Ok(syn::parse_quote!(#with: #decode::Decoder<#lifetime, #ty>))
+                Ok(syn::parse_quote!(#as_: #format::DecodeAs<#lifetime, #ty>))
             })
             .chain(
                 self.input
@@ -165,8 +161,8 @@ impl Generator<'_> {
 
     fn field_values(&self) -> impl Iterator<Item = syn::Result<syn::FieldValue>> + '_ {
         let Self {
-            decode,
             error,
+            format,
             std,
             tracing,
             lifetime,
@@ -180,7 +176,7 @@ impl Generator<'_> {
                 ident,
                 ty,
                 skip,
-                with,
+                as_,
             } = &field;
 
             let split: syn::Expr = if let Some(skip) = skip {
@@ -191,7 +187,7 @@ impl Generator<'_> {
             Ok(syn::parse_quote!(
                 #ident: {
                     let _span = #tracing::info_span!(#std::stringify!(#ident)).entered();
-                    <#with as #decode::Decoder<#lifetime, #ty>>::decode(
+                    <#as_ as #format::DecodeAs<#lifetime, #ty>>::decode_as(
                         #split.next().ok_or(#error::Error::InsufficientData)?
                     )?
                 }
@@ -207,7 +203,7 @@ impl Generator<'_> {
     fn attrs(&self) -> syn::Result<Attrs> {
         let mut split = None;
         for attr in &self.input.attrs {
-            if attr.path().is_ident("decode") {
+            if attr.path().is_ident("format") {
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("split") {
                         split = Some(meta.value()?.parse()?);
@@ -228,11 +224,11 @@ struct FieldNamed<'a> {
     ident: &'a syn::Ident,
     ty: &'a syn::Type,
     skip: Option<syn::LitInt>,
-    with: syn::Type,
+    as_: syn::Type,
 }
 impl Generator<'_> {
     fn fields(&self) -> impl Iterator<Item = syn::Result<FieldNamed<'_>>> + '_ {
-        let Self { decode, .. } = self;
+        let Self { format, .. } = self;
 
         self.fields.named.iter().map(move |field| {
             field.attrs.iter().try_fold(
@@ -243,16 +239,16 @@ impl Generator<'_> {
                         .ok_or_else(|| syn::Error::new(field.span(), "missing ident"))?,
                     ty: &field.ty,
                     skip: None,
-                    with: syn::parse_quote!(#decode::Standard),
+                    as_: syn::parse_quote!(#format::Same),
                 },
                 |mut this, attr| {
-                    if attr.path().is_ident("decode") {
+                    if attr.path().is_ident("format") {
                         attr.parse_nested_meta(|meta| {
                             if meta.path.is_ident("skip") {
                                 this.skip = Some(meta.value()?.parse()?);
                                 Ok(())
-                            } else if meta.path.is_ident("with") {
-                                this.with = meta.value()?.parse()?;
+                            } else if meta.path.is_ident("as") {
+                                this.as_ = meta.value()?.parse()?;
                                 Ok(())
                             } else {
                                 Err(meta.error("unimplemented"))
