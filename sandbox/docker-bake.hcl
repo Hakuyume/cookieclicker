@@ -3,7 +3,6 @@ group "default" {
     "firefox",
     "geckodriver",
     "vncserver",
-    "novnc",
     "ffmpeg",
   ]
 }
