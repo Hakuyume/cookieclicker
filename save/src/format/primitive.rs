@@ -1,20 +1,19 @@
-use super::{Decode, Encode};
+use super::Format;
 use crate::error::Error;
 use std::fmt;
 
-impl Decode<'_> for () {
+impl Format<'_> for () {
     #[tracing::instrument(err)]
     fn decode(_: &str) -> Result<Self, Error> {
         Ok(())
     }
-}
-impl Encode for () {
+
     fn encode(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
 
-impl Decode<'_> for bool {
+impl Format<'_> for bool {
     #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         match value {
@@ -23,44 +22,40 @@ impl Decode<'_> for bool {
             _ => Err(Error::InvalidData),
         }
     }
-}
-impl Encode for bool {
+
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", if *self { 1 } else { 0 })
     }
 }
 
-impl<'a> Decode<'a> for &'a str {
+impl<'a> Format<'a> for &'a str {
     #[tracing::instrument(err)]
     fn decode(value: &'a str) -> Result<Self, Error> {
         Ok(value)
     }
-}
-impl Encode for &str {
+
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl Decode<'_> for String {
+impl Format<'_> for String {
     #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         Ok(value.to_owned())
     }
-}
-impl Encode for String {
+
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl Decode<'_> for f64 {
+impl Format<'_> for f64 {
     #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         Ok(value.parse()?)
     }
-}
-impl Encode for f64 {
+
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString#return_value
         if self.abs() >= 1e21 || self.abs() < 1e-6 {
@@ -79,13 +74,12 @@ impl Encode for f64 {
 
 macro_rules! display_from_str {
     ($ty:ty) => {
-        impl Decode<'_> for $ty {
+        impl Format<'_> for $ty {
             #[tracing::instrument(err)]
             fn decode(value: &str) -> Result<Self, Error> {
                 Ok(value.parse()?)
             }
-        }
-        impl Encode for $ty {
+
             fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, "{self}")
             }
@@ -97,7 +91,7 @@ display_from_str!(usize);
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Decode, EncodeExt};
+    use super::super::{Format, FormatExt};
 
     #[test]
     fn test_f64() {

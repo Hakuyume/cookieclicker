@@ -1,8 +1,9 @@
 use crate::error::Error;
-use crate::format::{self, Decode, DecodeAs, Encode, EncodeAs};
+use crate::format;
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::fmt;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -23,17 +24,17 @@ pub struct FarmGridData {
     pub age: u64,
 }
 
-#[derive(Decode, Encode)]
+#[derive(format::Format)]
 #[format(split = ' ')]
-struct Format<T, U> {
+struct Format<'a> {
     inner: Inner,
     #[format(as = Custom)]
-    unlocked_seeds: T,
+    unlocked_seeds: Cow<'a, [bool]>,
     #[format(as = Custom)]
-    farm_grid_data: U,
+    farm_grid_data: Cow<'a, [Option<FarmGridData>]>,
 }
 
-#[derive(Decode, Encode)]
+#[derive(format::Format)]
 #[format(split = ':')]
 struct Inner {
     #[format(as = format::Timestamp)]
@@ -48,31 +49,29 @@ struct Inner {
 
 struct Custom;
 
-impl DecodeAs<'_, Vec<bool>> for Custom {
+impl<'a> format::FormatAs<'_, Cow<'a, [bool]>> for Custom {
     #[tracing::instrument(err)]
-    fn decode_as(value: &str) -> Result<Vec<bool>, Error> {
-        format::chars(value).map(Decode::decode).collect()
+    fn decode_as(value: &str) -> Result<Cow<'a, [bool]>, Error> {
+        format::chars(value).map(format::Format::decode).collect()
     }
-}
 
-impl EncodeAs<&Vec<bool>> for Custom {
-    fn encode_as(value: &&Vec<bool>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for v in *value {
-            Encode::encode(v, f)?;
+    fn encode_as(value: &Cow<'_, [bool]>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for v in value.as_ref() {
+            format::Format::encode(v, f)?;
         }
         Ok(())
     }
 }
 
-impl DecodeAs<'_, Vec<Option<FarmGridData>>> for Custom {
+impl<'a> format::FormatAs<'_, Cow<'a, [Option<FarmGridData>]>> for Custom {
     #[tracing::instrument(err)]
-    fn decode_as(value: &str) -> Result<Vec<Option<FarmGridData>>, Error> {
+    fn decode_as(value: &str) -> Result<Cow<'a, [Option<FarmGridData>]>, Error> {
         value
             .split(':')
             .tuples()
             .map(|(id, age)| {
-                let id = Decode::decode(id)?;
-                let age = Decode::decode(age)?;
+                let id = format::Format::decode(id)?;
+                let age = format::Format::decode(age)?;
                 if id == 0 {
                     Ok(None)
                 } else {
@@ -81,18 +80,19 @@ impl DecodeAs<'_, Vec<Option<FarmGridData>>> for Custom {
             })
             .collect()
     }
-}
 
-impl EncodeAs<&Vec<Option<FarmGridData>>> for Custom {
-    fn encode_as(value: &&Vec<Option<FarmGridData>>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn encode_as(
+        value: &Cow<'a, [Option<FarmGridData>]>,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         for (i, v) in value.iter().enumerate() {
             if i > 0 {
                 write!(f, ":")?;
             }
             if let Some(FarmGridData { id, age }) = v {
-                Encode::encode(id, f)?;
+                format::Format::encode(id, f)?;
                 write!(f, ":")?;
-                Encode::encode(age, f)?;
+                format::Format::encode(age, f)?;
             } else {
                 write!(f, "0:0")?;
             }
@@ -101,7 +101,7 @@ impl EncodeAs<&Vec<Option<FarmGridData>>> for Custom {
     }
 }
 
-impl Decode<'_> for Garden {
+impl format::Format<'_> for Garden {
     #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<Self, Error> {
         let Format {
@@ -116,7 +116,7 @@ impl Decode<'_> for Garden {
                 },
             unlocked_seeds,
             farm_grid_data,
-        } = Decode::decode(value)?;
+        } = format::Format::decode(value)?;
         Ok(Self {
             time_of_next_tick,
             soil_type,
@@ -124,13 +124,11 @@ impl Decode<'_> for Garden {
             frozen_garden,
             harvests_this_ascension,
             total_harvests,
-            unlocked_seeds,
-            farm_grid_data,
+            unlocked_seeds: unlocked_seeds.into(),
+            farm_grid_data: farm_grid_data.into(),
         })
     }
-}
 
-impl Encode for Garden {
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self {
             time_of_next_tick,
@@ -142,7 +140,7 @@ impl Encode for Garden {
             ref unlocked_seeds,
             ref farm_grid_data,
         } = *self;
-        Encode::encode(
+        format::Format::encode(
             &Format {
                 inner: Inner {
                     time_of_next_tick,
@@ -152,8 +150,8 @@ impl Encode for Garden {
                     harvests_this_ascension,
                     total_harvests,
                 },
-                unlocked_seeds,
-                farm_grid_data,
+                unlocked_seeds: unlocked_seeds.into(),
+                farm_grid_data: farm_grid_data.into(),
             },
             f,
         )

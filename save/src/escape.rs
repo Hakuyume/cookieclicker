@@ -11,7 +11,7 @@ pub(crate) fn decode(value: &str) -> Result<String, Error> {
 
 #[tracing::instrument(ret(level = tracing::Level::DEBUG))]
 pub(crate) fn encode(value: &str) -> String {
-    let mut value = BASE64_STANDARD.encode(&value);
+    let mut value = BASE64_STANDARD.encode(value);
     value.push_str("!END!");
     urlencoding::encode(&value).into_owned()
 }

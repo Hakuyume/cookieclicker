@@ -1,24 +1,34 @@
 // https://cookieclicker.fandom.com/wiki/Save
 
 mod error;
+mod escape;
 mod format;
 mod garden;
 mod upgrades;
 
 use chrono::{DateTime, Utc};
 pub use error::Error;
-pub use format::{decode, encode};
+use format::{Format, FormatExt};
 pub use garden::{FarmGridData, Garden};
 use serde::{Deserialize, Serialize};
 pub use upgrades::Upgrade;
 
-#[allow(clippy::manual_non_exhaustive)]
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[tracing::instrument(err)]
+pub fn decode(value: &str) -> Result<Save, Error> {
+    Format::decode(&escape::decode(value)?)
+}
+
+#[tracing::instrument]
+pub fn encode(value: &Save) -> String {
+    escape::encode(&value.display().to_string())
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = '|')]
 pub struct Save {
     pub game_version: GameVersion,
     #[serde(skip)]
-    empty: (),
+    pub empty: (),
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
@@ -27,13 +37,13 @@ pub struct Save {
     pub upgrades: Vec<Upgrade>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ';')]
 pub struct GameVersion {
     pub game_version: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ';')]
 pub struct RunDetails {
     #[format(as = format::Timestamp)]
@@ -47,7 +57,7 @@ pub struct RunDetails {
     pub you_appearance: YouAppearance,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ',')]
 pub struct YouAppearance {
     pub hair: usize,
@@ -59,7 +69,7 @@ pub struct YouAppearance {
     pub extra_b: usize,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 pub struct Preferences {
     pub particles: bool,
     pub numbers: bool,
@@ -89,7 +99,7 @@ pub struct Preferences {
     pub screan_reader: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ';')]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
@@ -151,15 +161,18 @@ pub struct MiscellaneousGameData {
     pub sugar_lump_type: usize,
     pub upgrades_in_vault: String,
     pub heralds: u64,
-    to_do_0: (),
-    to_do_1: (),
-    to_do_2: (),
+    #[serde(skip)]
+    pub to_do_0: (),
+    #[serde(skip)]
+    pub to_do_1: (),
+    #[serde(skip)]
+    pub to_do_2: (),
     pub music_volume: u64,
     pub cookies_sent: f64,
     pub cookies_received: f64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ';')]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
@@ -184,7 +197,7 @@ pub struct BuildingData {
     pub yous: BuildingDataEntry,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, format::Decode, format::Encode)]
+#[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ',')]
 pub struct BuildingDataEntry<M = ()> {
     pub amount_owned: u64,
