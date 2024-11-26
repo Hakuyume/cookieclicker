@@ -219,7 +219,12 @@ mod tests {
     #[test]
     #[tracing_test::traced_test]
     fn test_save() {
-        let value = escape::decode(include_str!("samples/00.txt")).unwrap();
-        format::check_inverse::<'_, '_, format::Standard, super::Save>(&value).unwrap();
+        for value in [
+            include_str!("samples/00.txt"),
+            include_str!("samples/01.txt"),
+        ] {
+            let value = escape::decode(value.trim()).unwrap();
+            format::check_inverse::<'_, '_, format::Standard, super::Save>(&value).unwrap();
+        }
     }
 }
