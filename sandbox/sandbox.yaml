@@ -49,13 +49,6 @@ spec:
             - --host=0.0.0.0
             - --marionette-port=2828
             - --port=30516
-        - name: novnc
-          image: ghcr.io/hakuyume/cookieclicker:novnc
-          command:
-            - /usr/bin/websockify
-            - --web=/usr/share/novnc
-            - "8080"
-            - localhost:5901
         - name: ffmpeg
           image: ghcr.io/hakuyume/cookieclicker:ffmpeg
           command:

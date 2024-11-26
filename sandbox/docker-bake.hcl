@@ -49,15 +49,6 @@ target "vncserver" {
   tags = ["${REPOSITORY}:vncserver${TAG_SUFFIX}"]
 }
 
-target "novnc" {
-  dockerfile-inline = <<-EOD
-  FROM ${BASE_DEBIAN}
-  RUN apt-get update && apt-get install --yes novnc websockify
-  EOD
-
-  tags = ["${REPOSITORY}:novnc${TAG_SUFFIX}"]
-}
-
 target "ffmpeg" {
   dockerfile-inline = <<-EOD
   FROM ${BASE_DEBIAN}
