@@ -1,5 +1,6 @@
 // https://cookieclicker.fandom.com/wiki/Save
 
+mod achievements;
 mod error;
 mod escape;
 mod format;
@@ -36,7 +37,8 @@ pub struct Save {
     pub building_data: BuildingData,
     #[format(with = upgrades::Custom)]
     pub upgrades: Vec<Upgrade>,
-    pub achievements: String,
+    #[format(with = achievements::Custom)]
+    pub achievements: Vec<bool>,
     #[format(with = game_buffs::Custom)]
     pub game_buffs: Vec<GameBuff>,
 }
