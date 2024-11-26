@@ -159,8 +159,10 @@ pub struct MiscellaneousGameData {
     pub volume: u64,
     pub number_of_shiny_wrinklers: u64,
     pub cookies_in_shiny_wrinklers: f64,
-    pub sugar_lumps: u64,
-    pub total_sugar_lumps_made: u64,
+    #[format(with = format::NoneAsNegative)]
+    pub sugar_lumps: Option<u64>,
+    #[format(with = format::NoneAsNegative)]
+    pub total_sugar_lumps_made: Option<u64>,
     #[format(with = format::Timestamp)]
     pub time_of_start_of_sugar_lump: DateTime<Utc>,
     #[format(with = format::NoneAsZero<format::Timestamp>)]
@@ -224,6 +226,7 @@ mod tests {
         for value in [
             include_str!("samples/00.txt"),
             include_str!("samples/01.txt"),
+            include_str!("samples/02.txt"),
         ] {
             let value = escape::decode(value.trim()).unwrap();
             format::check_inverse::<'_, '_, format::Standard, super::Save>(&value).unwrap();
