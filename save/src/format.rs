@@ -1,11 +1,9 @@
-mod none_as_empty;
-mod none_as_negative;
+mod none_as;
 mod standard;
 mod timestamp;
 
 use crate::error::Error;
-pub(crate) use none_as_empty::NoneAsEmpty;
-pub(crate) use none_as_negative::NoneAsNegative;
+pub(crate) use none_as::{NoneAsEmpty, NoneAsNegative, NoneAsZero};
 pub(crate) use save_derive::Format;
 pub(crate) use standard::Standard;
 use std::fmt;

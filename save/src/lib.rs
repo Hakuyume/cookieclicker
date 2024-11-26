@@ -158,8 +158,8 @@ pub struct MiscellaneousGameData {
     pub total_sugar_lumps_made: u64,
     #[format(with = format::Timestamp)]
     pub time_of_start_of_sugar_lump: DateTime<Utc>,
-    #[format(with = format::Timestamp)]
-    pub time_of_last_minigame_refill: DateTime<Utc>,
+    #[format(with = format::NoneAsZero<format::Timestamp>)]
+    pub time_of_last_minigame_refill: Option<DateTime<Utc>>,
     pub sugar_lump_type: usize,
     pub upgrades_in_vault: String,
     pub heralds: u64,
