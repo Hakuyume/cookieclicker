@@ -24,17 +24,18 @@ pub fn encode(value: &Save) -> String {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
-#[format(split = '|')]
+#[format(split = '|', trailing = true)]
 pub struct Save {
     pub game_version: GameVersion,
-    #[serde(skip)]
-    pub empty: (),
+    pub empty: String,
     pub run_details: RunDetails,
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
     pub building_data: BuildingData,
     #[format(with = upgrades::Custom)]
     pub upgrades: Vec<Upgrade>,
+    pub todo0: String,
+    pub todo1: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
@@ -97,10 +98,11 @@ pub struct Preferences {
     pub scary_stuff_off: bool,
     pub fullscreen: bool,
     pub screan_reader: bool,
+    pub todo0: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
-#[format(split = ';')]
+#[format(split = ';', trailing = true)]
 pub struct MiscellaneousGameData {
     pub cookies_in_bank: f64,
     pub cookies_baked: f64,
@@ -161,28 +163,25 @@ pub struct MiscellaneousGameData {
     pub sugar_lump_type: usize,
     pub upgrades_in_vault: String,
     pub heralds: u64,
-    #[serde(skip)]
-    pub to_do_0: (),
-    #[serde(skip)]
-    pub to_do_1: (),
-    #[serde(skip)]
-    pub to_do_2: (),
+    pub todo0: String,
+    pub todo1: String,
+    pub todo2: String,
     pub music_volume: u64,
     pub cookies_sent: f64,
     pub cookies_received: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
-#[format(split = ';')]
+#[format(split = ';', trailing = true)]
 pub struct BuildingData {
     pub cursors: BuildingDataEntry,
     pub grandmas: BuildingDataEntry,
     pub farms: BuildingDataEntry<Garden>,
     pub mines: BuildingDataEntry,
     pub factories: BuildingDataEntry,
-    pub banks: BuildingDataEntry,
-    pub temples: BuildingDataEntry,
-    pub wizard_towers: BuildingDataEntry,
+    pub banks: BuildingDataEntry<String>,
+    pub temples: BuildingDataEntry<String>,
+    pub wizard_towers: BuildingDataEntry<String>,
     pub shipments: BuildingDataEntry,
     pub alchemy_labs: BuildingDataEntry,
     pub portals: BuildingDataEntry,
@@ -218,6 +217,6 @@ mod tests {
     #[tracing_test::traced_test]
     fn test_save() {
         let value = escape::decode(include_str!("samples/00.txt")).unwrap();
-        <format::Standard as format::Format<'_, super::Save>>::check_inverse(&value).unwrap();
+        format::check_inverse::<'_, '_, format::Standard, super::Save>(&value).unwrap();
     }
 }

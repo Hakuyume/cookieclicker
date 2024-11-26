@@ -19,6 +19,7 @@ fn derive_impl(input: &Input) -> syn::Item {
     match input {
         Input::StructNamed {
             split,
+            trailing,
             ident,
             fields,
             ..
@@ -54,21 +55,45 @@ fn derive_impl(input: &Input) -> syn::Item {
                     .enumerate()
                     .flat_map(|(i, FieldNamed { with, ident, ty })| {
                         let with = with.as_ref().unwrap_or(&with_default);
-                        split
-                        .iter()
-                        .filter(move |_| i > 0)
-                        .map(|split| -> syn::Expr {
-                            syn::parse_quote!(__fmt::Display::fmt(&#split, f))
-                        })
-                        .chain(iter::once(syn::parse_quote!(
+                        iter::once(syn::parse_quote!(
                             <#with as __format::Format<'__format, #ty>>::encode(&value.#ident, f)
-                        )))
+                        ))
+                        .chain(
+                            split
+                                .iter()
+                                .filter(move |_| {
+                                    i + 1 < fields.len()
+                                        || trailing
+                                            .as_ref()
+                                            .map(syn::LitBool::value)
+                                            .unwrap_or(false)
+                                })
+                                .map(|split| -> syn::Expr {
+                                    syn::parse_quote!(__fmt::Display::fmt(&#split, f))
+                                }),
+                        )
                     });
+
+            let check_inverse_hook_blocks = fields.iter().map(
+                |FieldNamed { with, ident, ty }| -> syn::Block {
+                    let with = with.as_ref().unwrap_or(&with_default);
+                    syn::parse_quote!(
+                        {
+                            let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
+                            __format::check_inverse::<'__format, '__check_inverse_hook, #with, #ty>(
+                                split.next().ok_or(__error::Error::InsufficientData)?
+                            )?;
+                        }
+                    )
+                },
+            );
 
             syn::parse_quote!(
                 const _: () = {
                     use crate::error as __error;
                     use crate::format as __format;
+                    #[cfg(test)]
+                    use ::anyhow as __anyhow;
                     use ::std as __std;
                     use ::std::fmt as __fmt;
                     use ::tracing as __tracing;
@@ -87,6 +112,18 @@ fn derive_impl(input: &Input) -> syn::Item {
                             #(#encode_exprs?;)*
                             Ok(())
                         }
+
+                        #[cfg(test)]
+                        #[__tracing::instrument(err)]
+                        fn check_inverse_hook<'__check_inverse_hook>(value: &'__check_inverse_hook str) -> __anyhow::Result<()>
+                        where
+                        '__check_inverse_hook: '__format,
+                        Self: '__check_inverse_hook,
+                        {
+                            let mut split = #decode_split;
+                            #(#check_inverse_hook_blocks)*
+                            Ok(())
+                        }
                     }
                 };
             )
@@ -97,6 +134,7 @@ fn derive_impl(input: &Input) -> syn::Item {
 enum Input {
     StructNamed {
         split: Option<syn::Expr>,
+        trailing: Option<syn::LitBool>,
 
         ident: syn::Ident,
         generics: syn::Generics,
@@ -116,11 +154,15 @@ impl syn::parse::Parse for Input {
         let input = syn::DeriveInput::parse(input)?;
 
         let mut split = None;
+        let mut trailing = None;
         for attr in &input.attrs {
             if attr.path().is_ident("format") {
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("split") {
                         split = Some(meta.value()?.parse()?);
+                        Ok(())
+                    } else if meta.path.is_ident("trailing") {
+                        trailing = Some(meta.value()?.parse()?);
                         Ok(())
                     } else {
                         Err(meta.error("unknown"))
@@ -163,6 +205,7 @@ impl syn::parse::Parse for Input {
                     .collect::<syn::Result<_>>()?;
                 Ok(Self::StructNamed {
                     split,
+                    trailing,
                     ident: input.ident,
                     generics: input.generics,
                     fields,

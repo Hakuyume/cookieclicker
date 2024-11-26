@@ -36,22 +36,32 @@ pub(crate) trait Format<'a, T> {
     }
 
     #[cfg(test)]
-    #[tracing::instrument(err)]
-    fn check_inverse<'b>(value: &'b str) -> Result<(), Error>
+    fn check_inverse_hook<'b>(_: &'b str) -> anyhow::Result<()>
     where
         'b: 'a,
         Self: 'b,
     {
-        let actual = Self::display(&Self::decode(value)?).to_string();
-        let expected = value.to_owned();
-        if actual == expected {
-            Ok(())
-        } else {
-            Err(Error::CheckInverse { actual, expected })
-        }
+        Ok(())
     }
 }
 
 pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
     value.split("").filter(|v| !v.is_empty())
+}
+
+#[cfg(test)]
+#[tracing::instrument(err)]
+pub(crate) fn check_inverse<'a, 'b, T, U>(value: &'b str) -> anyhow::Result<()>
+where
+    'b: 'a,
+    T: Format<'a, U> + 'b,
+{
+    T::check_inverse_hook(value)?;
+    let actual = T::display(&T::decode(value)?).to_string();
+    let expected = value.to_owned();
+    anyhow::ensure!(
+        actual == expected,
+        "actual = {actual:?}, expected = {expected:?}",
+    );
+    Ok(())
 }

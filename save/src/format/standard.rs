@@ -1,5 +1,6 @@
 use super::Format;
 use crate::error::Error;
+use std::borrow::Cow;
 use std::fmt;
 
 pub(crate) struct Standard;
@@ -52,6 +53,17 @@ impl Format<'_, String> for Standard {
     }
 }
 
+impl<'a> Format<'a, Cow<'a, str>> for Standard {
+    #[tracing::instrument(err)]
+    fn decode(value: &'a str) -> Result<Cow<'a, str>, Error> {
+        Ok(value.into())
+    }
+
+    fn encode(value: &Cow<'a, str>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{value}")
+    }
+}
+
 impl Format<'_, f64> for Standard {
     #[tracing::instrument(err)]
     fn decode(value: &str) -> Result<f64, Error> {
@@ -63,7 +75,9 @@ impl Format<'_, f64> for Standard {
         if value.abs() >= 1e21 || value.abs() < 1e-6 {
             let exp = format!("{value:e}");
             let (m, e) = exp.split_once('e').unwrap_or((&exp, "0"));
-            if e.starts_with(['+', '-']) {
+            if ("0", "0") == (m, e) {
+                write!(f, "0")
+            } else if e.starts_with(['+', '-']) {
                 write!(f, "{m}e{e}")
             } else {
                 write!(f, "{m}e+{e}")
@@ -93,16 +107,16 @@ display_from_str!(usize);
 
 #[cfg(test)]
 mod tests {
-    use super::super::Format;
+    use super::super::check_inverse;
     use super::Standard;
 
     #[test]
     #[tracing_test::traced_test]
     fn test_f64() {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString#using_tostring
-        <Standard as Format<'_, f64>>::check_inverse("3.1622776601683794e+21").unwrap();
-        <Standard as Format<'_, f64>>::check_inverse("1000000000000000100").unwrap();
-        <Standard as Format<'_, f64>>::check_inverse("17").unwrap();
-        <Standard as Format<'_, f64>>::check_inverse("17.2").unwrap();
+        check_inverse::<'_, '_, Standard, f64>("3.1622776601683794e+21").unwrap();
+        check_inverse::<'_, '_, Standard, f64>("1000000000000000100").unwrap();
+        check_inverse::<'_, '_, Standard, f64>("17").unwrap();
+        check_inverse::<'_, '_, Standard, f64>("17.2").unwrap();
     }
 }
