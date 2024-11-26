@@ -44,7 +44,9 @@ pub(crate) trait Format<'a, T> {
 }
 
 pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
-    value.split("").filter(|v| !v.is_empty())
+    value
+        .char_indices()
+        .map(|(offset, c)| &value[offset..offset + c.len_utf8()])
 }
 
 #[cfg(test)]

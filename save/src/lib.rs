@@ -3,12 +3,14 @@
 mod error;
 mod escape;
 mod format;
+mod game_buffs;
 mod garden;
 mod upgrades;
 
 use chrono::{DateTime, Utc};
 pub use error::Error;
 use format::Format as _;
+pub use game_buffs::GameBuff;
 pub use garden::{FarmGridData, Garden};
 use serde::{Deserialize, Serialize};
 pub use upgrades::Upgrade;
@@ -34,8 +36,9 @@ pub struct Save {
     pub building_data: BuildingData,
     #[format(with = upgrades::Custom)]
     pub upgrades: Vec<Upgrade>,
-    pub todo0: String,
-    pub todo1: String,
+    pub achievements: String,
+    #[format(with = game_buffs::Custom)]
+    pub game_buffs: Vec<GameBuff>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
