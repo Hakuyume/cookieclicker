@@ -179,7 +179,6 @@ async fn store(operator: &Mutex<Operator>) -> anyhow::Result<()> {
         for i in 0..20 {
             interval.tick().await;
             let mut operator = operator.lock().await;
-            operator.clear().await?;
             operator.try_click(STORE_BUIK10).await?;
             operator
                 .try_click(fantoccini::Locator::Id(&format!("product{i}")))
@@ -254,7 +253,6 @@ impl Operator {
 
     #[tracing::instrument(err, ret, skip(self))]
     async fn try_buy_all_upgrades(&mut self) -> Result<bool, CmdError> {
-        self.clear().await?;
         self.try_click(STORE_BUY_ALL_UPGRADES).await
     }
 }
