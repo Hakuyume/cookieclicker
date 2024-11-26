@@ -13,4 +13,8 @@ pub enum Error {
     InsufficientData,
     #[error("invalid data")]
     InvalidData,
+
+    #[cfg(test)]
+    #[error("actual = {actual}, expected = {expected}")]
+    CheckInverse { actual: String, expected: String },
 }

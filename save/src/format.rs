@@ -1,44 +1,24 @@
 mod none_as_empty;
 mod none_as_negative;
-mod primitive;
+mod standard;
 mod timestamp;
 
 use crate::error::Error;
 pub(crate) use none_as_empty::NoneAsEmpty;
 pub(crate) use none_as_negative::NoneAsNegative;
 pub(crate) use save_derive::Format;
+pub(crate) use standard::Standard;
 use std::fmt;
 pub(crate) use timestamp::Timestamp;
 
-pub(crate) trait Format<'a>: Sized {
-    fn decode(value: &'a str) -> Result<Self, Error>;
-    fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-}
+pub(crate) trait Format<'a, T> {
+    fn decode(value: &'a str) -> Result<T, Error>;
+    fn encode(value: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
-pub(crate) trait FormatAs<'a, T>: Sized {
-    fn decode_as(value: &'a str) -> Result<T, Error>;
-    fn encode_as(value: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-}
-
-pub(crate) struct Same;
-impl<'a, T> FormatAs<'a, T> for Same
-where
-    T: Format<'a>,
-{
-    fn decode_as(value: &'a str) -> Result<T, Error> {
-        Format::decode(value)
-    }
-    fn encode_as(value: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Format::encode(value, f)
-    }
-}
-
-pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
-    value.split("").filter(|v| !v.is_empty())
-}
-
-pub(crate) trait FormatExt<'a>: Format<'a> {
-    fn display(&self) -> impl fmt::Display + '_ {
+    fn display<'b>(value: &'b T) -> impl fmt::Display + 'b
+    where
+        Self: 'b,
+    {
         struct Display<'a, T, F>(&'a T, F)
         where
             T: ?Sized;
@@ -52,7 +32,26 @@ pub(crate) trait FormatExt<'a>: Format<'a> {
             }
         }
 
-        Display(self, Self::encode)
+        Display(value, Self::encode)
+    }
+
+    #[cfg(test)]
+    #[tracing::instrument(err)]
+    fn check_inverse<'b>(value: &'b str) -> Result<(), Error>
+    where
+        'b: 'a,
+        Self: 'b,
+    {
+        let actual = Self::display(&Self::decode(value)?).to_string();
+        let expected = value.to_owned();
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(Error::CheckInverse { actual, expected })
+        }
     }
 }
-impl<'a, T> FormatExt<'a> for T where T: Format<'a> {}
+
+pub(crate) fn chars(value: &str) -> impl Iterator<Item = &str> {
+    value.split("").filter(|v| !v.is_empty())
+}

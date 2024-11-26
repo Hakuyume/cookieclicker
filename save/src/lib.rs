@@ -8,19 +8,19 @@ mod upgrades;
 
 use chrono::{DateTime, Utc};
 pub use error::Error;
-use format::{Format, FormatExt};
+use format::Format as _;
 pub use garden::{FarmGridData, Garden};
 use serde::{Deserialize, Serialize};
 pub use upgrades::Upgrade;
 
 #[tracing::instrument(err)]
 pub fn decode(value: &str) -> Result<Save, Error> {
-    Format::decode(&escape::decode(value)?)
+    format::Standard::decode(&escape::decode(value)?)
 }
 
 #[tracing::instrument]
 pub fn encode(value: &Save) -> String {
-    escape::encode(&value.display().to_string())
+    escape::encode(&format::Standard::display(value).to_string())
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
@@ -33,7 +33,7 @@ pub struct Save {
     pub preferences: Preferences,
     pub miscellaneous_game_data: MiscellaneousGameData,
     pub building_data: BuildingData,
-    #[format(as = upgrades::Custom)]
+    #[format(with = upgrades::Custom)]
     pub upgrades: Vec<Upgrade>,
 }
 
@@ -46,11 +46,11 @@ pub struct GameVersion {
 #[derive(Clone, Debug, Deserialize, Serialize, format::Format)]
 #[format(split = ';')]
 pub struct RunDetails {
-    #[format(as = format::Timestamp)]
+    #[format(with = format::Timestamp)]
     pub ascension_start: DateTime<Utc>,
-    #[format(as = format::Timestamp)]
+    #[format(with = format::Timestamp)]
     pub legacy_start: DateTime<Utc>,
-    #[format(as = format::Timestamp)]
+    #[format(with = format::Timestamp)]
     pub last_opened: DateTime<Utc>,
     pub bakery_name: String,
     pub seed: String,
@@ -115,7 +115,7 @@ pub struct MiscellaneousGameData {
     pub elder_pledges_made: u64,
     pub time_left_in_elder_pledge: u64,
     pub currently_researching: usize,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub time_left_in_research: Option<u64>,
     pub ascensions: u64,
     pub golden_cookie_clicks: u64,
@@ -123,10 +123,10 @@ pub struct MiscellaneousGameData {
     pub wrinklers_popped: u64,
     pub santa_level: usize,
     pub reindeer_clicked: u64,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub time_left_in_season: Option<u64>,
     pub season_switcher_uses: u64,
-    #[format(as = format::NoneAsEmpty)]
+    #[format(with = format::NoneAsEmpty)]
     pub current_season: Option<String>,
     pub cookies_contained_in_wrinklers: f64,
     pub number_of_wrinklers: u64,
@@ -135,15 +135,15 @@ pub struct MiscellaneousGameData {
     pub heavenly_chips_spent: f64,
     heavenly_cookies: String,
     pub ascension_mode: bool,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub permanent_upgrade_i: Option<usize>,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub permanent_upgrade_ii: Option<usize>,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub permanent_upgrade_iii: Option<usize>,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub permanent_upgrade_iv: Option<usize>,
-    #[format(as = format::NoneAsNegative)]
+    #[format(with = format::NoneAsNegative)]
     pub permanent_upgrade_v: Option<usize>,
     pub dragon_level: usize,
     pub dragon_aura: usize,
@@ -154,9 +154,9 @@ pub struct MiscellaneousGameData {
     pub cookies_in_shiny_wrinklers: f64,
     pub sugar_lumps: u64,
     pub total_sugar_lumps_made: u64,
-    #[format(as = format::Timestamp)]
+    #[format(with = format::Timestamp)]
     pub time_of_start_of_sugar_lump: DateTime<Utc>,
-    #[format(as = format::Timestamp)]
+    #[format(with = format::Timestamp)]
     pub time_of_last_minigame_refill: DateTime<Utc>,
     pub sugar_lump_type: usize,
     pub upgrades_in_vault: String,
@@ -204,11 +204,20 @@ pub struct BuildingDataEntry<M = ()> {
     pub amount_bought: u64,
     pub cookies_produced: f64,
     pub level: usize,
-    #[format(as = format::NoneAsEmpty)]
+    #[format(with = format::NoneAsEmpty)]
     pub minigame_data: Option<M>,
     pub muted: bool,
     pub highest_amount: u64,
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use crate::{escape, format};
+
+    #[test]
+    #[tracing_test::traced_test]
+    fn test_save() {
+        let value = escape::decode(include_str!("samples/00.txt")).unwrap();
+        <format::Standard as format::Format<'_, super::Save>>::check_inverse(&value).unwrap();
+    }
+}

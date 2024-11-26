@@ -11,10 +11,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
 fn derive_impl(input: &Input) -> syn::Item {
     let impl_generics = input.impl_generics();
-    let ty_generics = input.ty_generics();
+    let ty_generics = input.ty_generics().collect::<Vec<_>>();
     let where_predicates = input.where_predicates();
 
-    let as_default = syn::parse_quote!(__format::Same);
+    let with_default = syn::parse_quote!(__format::Standard);
 
     match input {
         Input::StructNamed {
@@ -24,9 +24,9 @@ fn derive_impl(input: &Input) -> syn::Item {
             ..
         } => {
             let where_predicates =
-                where_predicates.chain(fields.iter().map(|FieldNamed { as_, ty, .. }| {
-                    let as_ = as_.as_ref().unwrap_or(&as_default);
-                    syn::parse_quote!(#as_: __format::FormatAs<'__format, #ty>)
+                where_predicates.chain(fields.iter().map(|FieldNamed { with, ty, .. }| {
+                    let with = with.as_ref().unwrap_or(&with_default);
+                    syn::parse_quote!(#with: __format::Format<'__format, #ty>)
                 }));
 
             let decode_split: syn::Expr = if let Some(split) = split {
@@ -35,12 +35,12 @@ fn derive_impl(input: &Input) -> syn::Item {
                 syn::parse_quote!(__format::chars(value))
             };
             let decode_field_values = fields.iter().map(
-                |FieldNamed { as_, ident, ty }| -> syn::FieldValue {
-                    let as_ = as_.as_ref().unwrap_or(&as_default);
+                |FieldNamed { with, ident, ty }| -> syn::FieldValue {
+                    let with = with.as_ref().unwrap_or(&with_default);
                     syn::parse_quote!(
                         #ident: {
                             let _span = __tracing::info_span!(__std::stringify!(#ident)).entered();
-                            <#as_ as __format::FormatAs<'__format, #ty>>::decode_as(
+                            <#with as __format::Format<'__format, #ty>>::decode(
                                 split.next().ok_or(__error::Error::InsufficientData)?
                             )?
                         }
@@ -52,8 +52,8 @@ fn derive_impl(input: &Input) -> syn::Item {
                 fields
                     .iter()
                     .enumerate()
-                    .flat_map(|(i, FieldNamed { as_, ident, ty })| {
-                        let as_ = as_.as_ref().unwrap_or(&as_default);
+                    .flat_map(|(i, FieldNamed { with, ident, ty })| {
+                        let with = with.as_ref().unwrap_or(&with_default);
                         split
                         .iter()
                         .filter(move |_| i > 0)
@@ -61,7 +61,7 @@ fn derive_impl(input: &Input) -> syn::Item {
                             syn::parse_quote!(__fmt::Display::fmt(&#split, f))
                         })
                         .chain(iter::once(syn::parse_quote!(
-                            <#as_ as __format::FormatAs<'__format, #ty>>::encode_as(&self.#ident, f)
+                            <#with as __format::Format<'__format, #ty>>::encode(&value.#ident, f)
                         )))
                     });
 
@@ -73,17 +73,17 @@ fn derive_impl(input: &Input) -> syn::Item {
                     use ::std::fmt as __fmt;
                     use ::tracing as __tracing;
 
-                    impl <'__format, #(#impl_generics,)*> __format::Format<'__format> for #ident<#(#ty_generics,)*>
+                    impl<'__format, #(#impl_generics,)*> __format::Format<'__format, #ident<#(#ty_generics,)*>> for __format::Standard
                     where
                     #(#where_predicates,)*
                     {
                         #[__tracing::instrument(err)]
-                        fn decode(value: &'__format str) -> Result<Self, __error::Error> {
+                        fn decode(value: &'__format str) -> Result<#ident<#(#ty_generics,)*>, __error::Error> {
                             let mut split = #decode_split;
-                            Ok(Self {#(#decode_field_values,)*})
+                            Ok(#ident {#(#decode_field_values,)*})
                         }
 
-                        fn encode(&self, f: &mut __fmt::Formatter<'_>) -> __fmt::Result {
+                        fn encode(value: &#ident<#(#ty_generics,)*>, f: &mut __fmt::Formatter<'_>) -> __fmt::Result {
                             #(#encode_exprs?;)*
                             Ok(())
                         }
@@ -105,7 +105,7 @@ enum Input {
 }
 
 struct FieldNamed {
-    as_: Option<syn::Type>,
+    with: Option<syn::Type>,
 
     ident: syn::Ident,
     ty: syn::Type,
@@ -140,12 +140,12 @@ impl syn::parse::Parse for Input {
                     .map(|field| {
                         let span = field.span();
 
-                        let mut as_ = None;
+                        let mut with = None;
                         for attr in &field.attrs {
                             if attr.path().is_ident("format") {
                                 attr.parse_nested_meta(|meta| {
-                                    if meta.path.is_ident("as") {
-                                        as_ = Some(meta.value()?.parse()?);
+                                    if meta.path.is_ident("with") {
+                                        with = Some(meta.value()?.parse()?);
                                         Ok(())
                                     } else {
                                         Err(meta.error("unknown"))
@@ -155,7 +155,7 @@ impl syn::parse::Parse for Input {
                         }
 
                         Ok(FieldNamed {
-                            as_,
+                            with,
                             ident: field.ident.ok_or(syn::Error::new(span, "missing ident"))?,
                             ty: field.ty,
                         })
