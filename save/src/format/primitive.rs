@@ -63,10 +63,14 @@ impl Decode<'_> for f64 {
 impl Encode for f64 {
     fn encode(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString#return_value
-        if self.abs() >= 1e21 {
-            write!(f, "{}", format!("{self:e}").replace('e', "e+"))
-        } else if self.abs() < 1e-6 {
-            write!(f, "{self:e}")
+        if self.abs() >= 1e21 || self.abs() < 1e-6 {
+            let exp = format!("{self:e}");
+            let (m, e) = exp.split_once('e').unwrap_or((&exp, "0"));
+            if e.starts_with(['+', '-']) {
+                write!(f, "{m}e{e}")
+            } else {
+                write!(f, "{m}e+{e}")
+            }
         } else {
             write!(f, "{self}")
         }
