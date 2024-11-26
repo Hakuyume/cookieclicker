@@ -4,7 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow.workspace = true
+clap.workspace = true
+chrono.workspace = true
+cookieclicker-save.path = "../cookieclicker-save"
+ctrlc.workspace = true
 fantoccini.workspace = true
 futures.workspace = true
-tokio = { workspace = true, features = ["time"] }
+serde_json.workspace = true
+sqlx = { workspace = true, features = ["chrono", "sqlite"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 tracing.workspace = true
+tracing-subscriber.workspace = true
