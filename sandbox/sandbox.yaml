@@ -7,8 +7,6 @@ spec:
   selector:
     matchLabels:
       app: cookieclicker
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
@@ -50,6 +48,7 @@ spec:
             - --connect-existing
             - --host=0.0.0.0
             - --marionette-port=2828
+            - --port=30516
         - name: novnc
           image: ghcr.io/hakuyume/cookieclicker:novnc
           command:
@@ -57,23 +56,56 @@ spec:
             - --web=/usr/share/novnc
             - "8080"
             - localhost:5901
+        - name: ffmpeg
+          image: ghcr.io/hakuyume/cookieclicker:ffmpeg
+          command:
+            - ffmpeg
+            - -f
+            - x11grab
+            - -i
+            - :1
+            - -f
+            - hls
+            - -hls_segment_filename
+            - video%03d.ts
+            - -hls_flags
+            - delete_segments
+            - video.m3u8
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: hls
+              mountPath: /hls
+          workingDir: /hls
+        - name: nginx
+          image: nginx
+          volumeMounts:
+            - name: hls
+              mountPath: /usr/share/nginx/html/hls
+              readOnly: true
 
       volumes:
         - name: tmp
           emptyDir:
             medium: Memory
+        - name: hls
+          emptyDir:
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: cookieclicker
 spec:
+  type: NodePort
   selector:
     app: cookieclicker
   ports:
     - name: webdriver
       protocol: TCP
-      port: 4444
-    - name: novnc
+      port: 30516
+      nodePort: 30516
+    - name: http
       protocol: TCP
-      port: 8080
+      port: 80
+      nodePort: 30656

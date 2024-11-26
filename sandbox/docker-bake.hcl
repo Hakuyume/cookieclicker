@@ -4,6 +4,7 @@ group "default" {
     "geckodriver",
     "vncserver",
     "novnc",
+    "ffmpeg",
   ]
 }
 
@@ -55,4 +56,13 @@ target "novnc" {
   EOD
 
   tags = ["${REPOSITORY}:novnc${TAG_SUFFIX}"]
+}
+
+target "ffmpeg" {
+  dockerfile-inline = <<-EOD
+  FROM ${BASE_DEBIAN}
+  RUN apt-get update && apt-get install --yes ffmpeg
+  EOD
+
+  tags = ["${REPOSITORY}:ffmpeg${TAG_SUFFIX}"]
 }
