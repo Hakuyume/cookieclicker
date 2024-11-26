@@ -1,13 +1,13 @@
 [package]
-name = "save"
+name = "cookieclicker-save"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 base64.workspace = true
 chrono.workspace = true
+cookieclicker-save-derive.path = "../cookieclicker-save-derive"
 itertools.workspace = true
-save-derive.path = "../save-derive"
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

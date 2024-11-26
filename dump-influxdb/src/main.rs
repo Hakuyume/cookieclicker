@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
         let builder = rows.into_iter().try_fold(
             influxdb_line_protocol::LineProtocolBuilder::new(),
             |builder, (timestamp, value)| {
-                let save = save::decode(&value)?;
+                let save = cookieclicker_save::decode(&value)?;
                 anyhow::Ok(
                     builder
                         .measurement("save")

@@ -40,8 +40,8 @@ async fn main() -> anyhow::Result<()> {
         .fetch_optional(&pool)
         .await?;
         if let Some(backup) = backup {
-            if cookies_baked_all_time(&save::decode(&backup)?)
-                > cookies_baked_all_time(&save::decode(&current)?)
+            if cookies_baked_all_time(&cookieclicker_save::decode(&backup)?)
+                > cookies_baked_all_time(&cookieclicker_save::decode(&current)?)
             {
                 client.lock().await.import_save(&backup).await?;
             }
@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
     .await
 }
 
-fn cookies_baked_all_time(save: &save::Save) -> f64 {
+fn cookies_baked_all_time(save: &cookieclicker_save::Save) -> f64 {
     save.miscellaneous_game_data.cookies_baked
         + save.miscellaneous_game_data.cookies_forfeited_by_ascending
 }

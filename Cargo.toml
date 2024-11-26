@@ -1,5 +1,12 @@
 [workspace]
-members = ["agent", "automation", "dump-influxdb", "save", "save-derive"]
+members = [
+  "agent",
+  "automation",
+  "dump-influxdb",
+
+  "cookieclicker-save",
+  "cookieclicker-save-derive",
+]
 resolver = "2"
 
 [workspace.dependencies]

@@ -5,7 +5,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut line = String::new();
     io::stdin().read_line(&mut line)?;
-    let save = save::decode(line.trim())?;
+    let save = cookieclicker_save::decode(line.trim())?;
     println!("{}", serde_json::to_string_pretty(&save)?);
 
     Ok(())

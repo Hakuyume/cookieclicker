@@ -25,9 +25,9 @@ dependencies = [
  "automation",
  "chrono",
  "clap",
+ "cookieclicker-save",
  "futures",
  "humantime",
- "save",
  "sqlx",
  "tokio",
  "tracing-subscriber",
@@ -418,6 +418,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "cookieclicker-save"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "cookieclicker-save-derive",
+ "itertools 0.13.0",
+ "rand",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.3",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
+ "urlencoding",
+]
+
+[[package]]
+name = "cookieclicker-save-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.89",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -544,8 +572,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "cookieclicker-save",
  "influxdb-line-protocol",
- "save",
  "sqlx",
  "tokio",
  "tracing-subscriber",
@@ -1885,34 +1913,6 @@ name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
-
-[[package]]
-name = "save"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "itertools 0.13.0",
- "rand",
- "save-derive",
- "serde",
- "serde_json",
- "thiserror 2.0.3",
- "tracing",
- "tracing-subscriber",
- "tracing-test",
- "urlencoding",
-]
-
-[[package]]
-name = "save-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.89",
-]
 
 [[package]]
 name = "schannel"

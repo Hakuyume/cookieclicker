@@ -7,8 +7,8 @@ edition = "2021"
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+cookieclicker-save.path = "../cookieclicker-save"
 influxdb-line-protocol.workspace = true
-save.path = "../save"
 sqlx = { workspace = true, features = ["chrono", "sqlite"] }
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread"] }
 tracing-subscriber.workspace = true

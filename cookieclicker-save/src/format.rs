@@ -3,8 +3,8 @@ mod standard;
 mod timestamp;
 
 use crate::error::Error;
+pub(crate) use cookieclicker_save_derive::Format;
 pub(crate) use none_as::{NoneAsEmpty, NoneAsNegative, NoneAsZero};
-pub(crate) use save_derive::Format;
 pub(crate) use standard::Standard;
 use std::fmt;
 pub(crate) use timestamp::Timestamp;

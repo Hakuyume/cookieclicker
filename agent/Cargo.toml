@@ -8,9 +8,9 @@ anyhow.workspace = true
 automation.path = "../automation"
 clap.workspace = true
 chrono.workspace = true
+cookieclicker-save.path = "../cookieclicker-save"
 futures.workspace = true
 humantime.workspace = true
-save.path = "../save"
 sqlx = { workspace = true, features = ["chrono", "sqlite"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
 tracing-subscriber.workspace = true
