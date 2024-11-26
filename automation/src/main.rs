@@ -41,7 +41,12 @@ async fn main_impl(args: Args, client: fantoccini::Client) -> anyhow::Result<()>
     let (observer, operator) = split(client);
 
     resume(&pool, &observer, &operator).await?;
-    futures::future::try_join(backup(&pool, &observer), big_cookie(&operator)).await?;
+    futures::future::try_join3(
+        backup(&pool, &observer),
+        big_cookie(&operator),
+        store(&operator),
+    )
+    .await?;
     Ok(())
 }
 
@@ -165,6 +170,24 @@ async fn big_cookie(operator: &Mutex<Operator>) -> anyhow::Result<()> {
     }
 }
 
+#[tracing::instrument(err, skip(operator))]
+async fn store(operator: &Mutex<Operator>) -> anyhow::Result<()> {
+    let mut interval = tokio::time::interval(Duration::from_secs(5));
+    loop {
+        interval.tick().await;
+        operator.lock().await.try_buy_all_upgrades().await?;
+        for i in 0..20 {
+            interval.tick().await;
+            let mut operator = operator.lock().await;
+            operator.clear().await?;
+            operator.try_click(STORE_BUIK10).await?;
+            operator
+                .try_click(fantoccini::Locator::Id(&format!("product{i}")))
+                .await?;
+        }
+    }
+}
+
 struct Observer(fantoccini::Client);
 impl Observer {
     #[tracing::instrument(err, skip(self))]
@@ -228,6 +251,12 @@ impl Operator {
 
         Ok(())
     }
+
+    #[tracing::instrument(err, ret, skip(self))]
+    async fn try_buy_all_upgrades(&mut self) -> Result<bool, CmdError> {
+        self.clear().await?;
+        self.try_click(STORE_BUY_ALL_UPGRADES).await
+    }
 }
 
 type Locator = fantoccini::Locator<'static>;
@@ -244,3 +273,6 @@ const OPTIONS: Locator = Locator::Id("prefsButton");
 const IMPORT_SAVE: Locator = Locator::LinkText("Import save");
 const IMPORT_SAVE_TEXT: Locator = PROMPT_TEXTAREA;
 const IMPORT_SAVE_LOAD: Locator = PROMPT_OPTION0;
+
+const STORE_BUY_ALL_UPGRADES: Locator = Locator::Id("storeBuyAllButton");
+const STORE_BUIK10: Locator = Locator::Id("storeBulk10");
