@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow.workspace = true
+backoff = { workspace = true, features = ["tokio"] }
 clap.workspace = true
 chrono.workspace = true
 cookieclicker-save.path = "../cookieclicker-save"

@@ -31,17 +31,46 @@ impl Observer {
 impl Operator {
     #[tracing::instrument(err, skip(self))]
     pub async fn click(&mut self, locator: Locator<'_>) -> anyhow::Result<()> {
-        Ok(self.0.find(locator).await?.click().await?)
+        use fantoccini::error::CmdError;
+        use fantoccini::error::ErrorStatus::*;
+
+        backoff::future::retry(backoff::ExponentialBackoff::default(), || async {
+            match async { self.0.find(locator).await?.click().await }.await {
+                Ok(()) => Ok(()),
+                Err(CmdError::Standard(e))
+                    if matches!(
+                        e.error,
+                        ElementClickIntercepted
+                            | ElementNotInteractable
+                            | NoSuchElement
+                            | StaleElementReference
+                    ) =>
+                {
+                    tracing::warn!(error = e.to_string());
+                    Err(backoff::Error::transient(CmdError::Standard(e)))
+                }
+                Err(e) => Err(backoff::Error::permanent(e)),
+            }
+        })
+        .await?;
+        Ok(())
     }
 
     #[tracing::instrument(err, skip(self))]
     pub async fn try_click(&mut self, locator: Locator<'_>) -> anyhow::Result<bool> {
+        use fantoccini::error::CmdError;
+        use fantoccini::error::ErrorStatus::*;
+
         match async { self.0.find(locator).await?.click().await }.await {
             Ok(()) => Ok(true),
-            Err(e)
-                if e.is_no_such_element()
-                    || e.is_stale_element_reference()
-                    || e.is_element_not_interactable() =>
+            Err(CmdError::Standard(e))
+                if matches!(
+                    e.error,
+                    ElementClickIntercepted
+                        | ElementNotInteractable
+                        | NoSuchElement
+                        | StaleElementReference
+                ) =>
             {
                 tracing::warn!(error = e.to_string());
                 Ok(false)

@@ -32,9 +32,16 @@ async fn main() -> anyhow::Result<()> {
         futures::future::Abortable::new(main_impl(args, client.clone()), registration).await;
     client.close().await?;
     tracing::info!("close");
-    output??;
 
-    Ok(())
+    let output = output?;
+    if let Err(e) = &output {
+        if let Some(fantoccini::error::CmdError::Standard(e)) =
+            e.downcast_ref::<fantoccini::error::CmdError>()
+        {
+            tracing::error!(error = ?e.error);
+        }
+    }
+    output
 }
 
 async fn main_impl(args: Args, client: fantoccini::Client) -> anyhow::Result<()> {
