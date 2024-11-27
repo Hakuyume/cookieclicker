@@ -49,10 +49,11 @@ async fn main_impl(args: Args, client: fantoccini::Client) -> anyhow::Result<()>
     let (observer, operator) = client::split(client);
 
     resume(&database, &observer, &operator).await?;
-    futures::future::try_join3(
+    futures::future::try_join4(
         backup(&database, &observer),
         big_cookie(&operator),
         store(&operator),
+        shimmer(&observer, &operator),
     )
     .await?;
     Ok(())
@@ -116,5 +117,20 @@ async fn store(operator: &Mutex<client::Operator>) -> anyhow::Result<()> {
                 .try_click(locator::store_building(*building))
                 .await?;
         }
+    }
+}
+
+#[tracing::instrument(err, skip(observer, operator))]
+async fn shimmer(
+    observer: &client::Observer,
+    operator: &Mutex<client::Operator>,
+) -> anyhow::Result<()> {
+    loop {
+        observer.wait_for_element(locator::SHIMMER).await?;
+        operator
+            .lock()
+            .await
+            .try_click_all(locator::SHIMMER)
+            .await?;
     }
 }

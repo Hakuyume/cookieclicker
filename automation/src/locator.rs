@@ -50,3 +50,5 @@ pub fn store_building(building: Building) -> Locator<'static> {
     });
     Locator::Id(&ids[building as usize])
 }
+
+pub const SHIMMER: Locator = Locator::Css(".shimmer");

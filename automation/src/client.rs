@@ -26,6 +26,12 @@ impl Observer {
             Ok(None)
         }
     }
+
+    #[tracing::instrument(err, skip(self))]
+    pub async fn wait_for_element(&self, locator: Locator<'_>) -> anyhow::Result<()> {
+        self.0.wait().forever().for_element(locator).await?;
+        Ok(())
+    }
 }
 
 impl Operator {
@@ -77,6 +83,32 @@ impl Operator {
             }
             Err(e) => Err(e.into()),
         }
+    }
+
+    #[tracing::instrument(err, skip(self))]
+    pub async fn try_click_all(&mut self, locator: Locator<'_>) -> anyhow::Result<()> {
+        use fantoccini::error::CmdError;
+        use fantoccini::error::ErrorStatus::*;
+
+        for element in self.0.find_all(locator).await? {
+            match element.click().await {
+                Ok(()) => (),
+                Err(CmdError::Standard(e))
+                    if matches!(
+                        e.error,
+                        ElementClickIntercepted
+                            | ElementNotInteractable
+                            | NoSuchElement
+                            | StaleElementReference
+                    ) =>
+                {
+                    tracing::warn!(error = e.to_string());
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+
+        Ok(())
     }
 
     #[tracing::instrument(err, ret, skip(self))]
