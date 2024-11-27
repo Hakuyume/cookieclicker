@@ -17,8 +17,9 @@ spec:
           image: ghcr.io/hakuyume/cookieclicker:vncserver
           command:
             - vncserver
+            - --I-KNOW-THIS-IS-INSECURE
             - -fg
-            - -geometry=1440x2560
+            - -localhost=no
             - -SecurityTypes=None
             - :1
           volumeMounts:
@@ -94,6 +95,10 @@ spec:
   selector:
     app: cookieclicker
   ports:
+    - name: vnc
+      protocol: TCP
+      port: 5901
+      nodePort: 30853
     - name: webdriver
       protocol: TCP
       port: 30516
